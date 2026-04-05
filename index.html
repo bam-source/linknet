@@ -93,39 +93,42 @@
   // FUNGSI UTAMA SINKRONISASI
   window.syncFromGitHub = async function() {
     // --- KONFIGURASI GITHUB ANDA ---
-    // Jika file Excel ada di dalam folder, isi path: 'Nama Folder'
-    // Jika file Excel ada di luar (langsung di repo), isi path: ''
     const GH_CONFIG = {
       user: 'bam-source', 
       repo: 'linknet', 
-      path: '' // Mengosongkan path agar mencari di root repositori
+      path: 'DATA MASTER' // Mengarahkan ke folder DATA MASTER
     };
 
     if(window.state.isSyncing) return;
     window.state.isSyncing = true;
     toggleSyncBtn(true);
-    document.getElementById('auth-status').innerText = "Mencoba menarik data...";
+    document.getElementById('auth-status').innerText = "Menghubungkan ke GitHub...";
 
     try {
+      // Kita encodeURIComponent karena ada spasi di nama folder
       const apiUrl = `https://api.github.com/repos/${GH_CONFIG.user}/${GH_CONFIG.repo}/contents/${encodeURIComponent(GH_CONFIG.path)}`;
       const response = await fetch(apiUrl);
       
       if(!response.ok) {
+          if(response.status === 404) throw new Error(`Folder '${GH_CONFIG.path}' tidak ditemukan di repositori.`);
+          if(response.status === 403) throw new Error("Akses ditolak (Rate Limit). Pastikan Repo Public.");
           const errorData = await response.json();
-          throw new Error(`GitHub Error: ${errorData.message}. Pastikan Repo Public.`);
+          throw new Error(`GitHub Error: ${errorData.message}`);
       }
       
       const contents = await response.json();
       const excelFiles = contents.filter(f => f.name.toLowerCase().endsWith('.xlsx') || f.name.toLowerCase().endsWith('.xls'));
       
       if (excelFiles.length === 0) {
-          throw new Error("Tidak ditemukan file Excel di lokasi tersebut.");
+          throw new Error(`Tidak ada file Excel di folder '${GH_CONFIG.path}'.`);
       }
 
       // Cari file Master (untuk setting komisi)
       const masterFile = excelFiles.find(f => f.name.toUpperCase().includes('MASTER_DATA'));
       if(masterFile) {
           await processMasterFile(masterFile.download_url);
+      } else {
+          console.warn("File MASTER_DATA tidak ditemukan di folder tersebut.");
       }
 
       // Proses File Laporan
@@ -187,7 +190,7 @@
       
     } catch (err) { 
         console.error(err);
-        document.getElementById('auth-status').innerText = `Error: ${err.message}`;
+        document.getElementById('auth-status').innerText = `Gagal: ${err.message}`;
     } finally { 
         window.state.isSyncing = false; 
         toggleSyncBtn(false); 
@@ -427,11 +430,17 @@ td{padding:10px;border-bottom:1px solid var(--border);color:var(--text2)}
 
   <div id="tab-settings" class="hidden">
     <div class="panel">
-      <h2>DEBUG INFO</h2>
-      <p>Target: <b>bam-source/linknet</b></p>
-      <p>Path: <b>(ROOT)</b></p>
+      <h2>DEBUG INFO (GitHub)</h2>
+      <p>Target User: <b>bam-source</b></p>
+      <p>Target Repo: <b>linknet</b></p>
+      <p>Target Folder: <b style="color:var(--accent2)">DATA MASTER</b></p>
       <hr style="margin:10px 0; opacity:0.1">
-      <p style="color:var(--amber)">Pastikan file Excel Anda diletakkan langsung di repositori, bukan di dalam folder, atau sesuaikan variabel <b>GH_CONFIG.path</b> di dalam kode.</p>
+      <p style="color:var(--amber)"><b>Panduan Perbaikan di GitHub:</b></p>
+      <ul style="margin-left: 20px; font-size: 13px; color: var(--text2)">
+        <li>Pastikan folder di GitHub Anda bernama <b>DATA MASTER</b> (huruf besar semua).</li>
+        <li>Pastikan file <b>MASTER_DATA.xlsx</b> ada di dalam folder tersebut.</li>
+        <li>Pastikan repositori <b>linknet</b> diatur sebagai <b>Public</b>.</li>
+      </ul>
     </div>
   </div>
 </div>
