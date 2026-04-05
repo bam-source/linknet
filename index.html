@@ -3,10 +3,394 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LINK.NET</title>
+<title>MikMon Dashboard PRO - LINK.NET</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+  // Konfigurasi dari Environment
+  const firebaseConfig = JSON.parse(__firebase_config);
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const appId = typeof __app_id !== 'undefined' ? __app_id : 'mikmon-dashboard-pro';
+
+  // State Global Aplikasi
+  window.state = {
+    master: { sellers: [], packages: [] },
+    commissions: {}, 
+    reports: [],
+    chart: null,
+    isSyncing: false,
+    currentTree: {},
+    user: null
+  };
+
+  const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+  // Inisialisasi Auth
+  const initAuth = async () => {
+    try {
+      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+        await signInWithCustomToken(auth, __initial_auth_token);
+      } else {
+        await signInAnonymously(auth);
+      }
+    } catch (err) {
+      console.error("Auth Error:", err);
+    }
+  };
+
+  initAuth();
+
+  onAuthStateChanged(auth, (user) => {
+    window.state.user = user;
+    if (user) {
+      document.getElementById('auth-status').innerText = `Cloud Sync: Active (${user.uid.substring(0,8)}...)`;
+      setupRealtimeSync(user.uid);
+    }
+  });
+
+  /**
+   * FIX: Path Firestore harus memiliki segmen GENAP untuk dokumen.
+   * Path yang benar: artifacts / {appId} / public / data / {collectionName} / {documentId}
+   */
+  const getDashboardDocRef = () => {
+    return doc(db, 'artifacts', appId, 'public', 'data', 'states', 'dashboard_main');
+  };
+
+  // Listener Real-time dari Firestore
+  function setupRealtimeSync(uid) {
+    const docRef = getDashboardDocRef();
+    
+    onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const cloudData = docSnap.data();
+        window.state.commissions = cloudData.commissions || {};
+        window.state.reports = cloudData.reports || [];
+        window.state.master = cloudData.master || { sellers: [], packages: [] };
+        updateUI();
+      } else {
+        // Migrasi dari localStorage jika cloud kosong
+        const sc = localStorage.getItem('mk_comm_auto');
+        const sr = localStorage.getItem('mk_reports_auto');
+        if (sc || sr) {
+          window.state.commissions = sc ? JSON.parse(sc) : {};
+          window.state.reports = sr ? JSON.parse(sr) : [];
+          saveToCloud(); 
+        }
+      }
+    }, (err) => {
+      console.error("Firestore Sync Error:", err);
+    });
+  }
+
+  // Simpan ke Cloud
+  async function saveToCloud() {
+    if (!window.state.user) return;
+    const docRef = getDashboardDocRef();
+    try {
+      await setDoc(docRef, {
+        commissions: window.state.commissions,
+        reports: window.state.reports,
+        master: window.state.master,
+        lastUpdated: new Date().toISOString(),
+        updatedBy: window.state.user.uid
+      });
+    } catch (err) {
+      console.error("Save Cloud Error:", err);
+    }
+  }
+
+  // Fungsi sinkronisasi GitHub
+  window.syncFromGitHub = async function() {
+    const GH_CONFIG = {
+      user: 'username_anda', // Ganti dengan username anda
+      repo: 'nama_repo_anda', // Ganti dengan repo anda
+      path: 'DATA MASTER'     
+    };
+
+    if(!GH_CONFIG.user || GH_CONFIG.user === 'username_anda') {
+        alert("Silahkan atur GH_CONFIG (Username/Repo) di dalam kode terlebih dahulu.");
+        return;
+    }
+    
+    if(window.state.isSyncing) return;
+    window.state.isSyncing = true;
+    toggleSyncBtn(true);
+
+    try {
+      const apiUrl = `https://api.github.com/repos/${GH_CONFIG.user}/${GH_CONFIG.repo}/contents/${encodeURIComponent(GH_CONFIG.path)}`;
+      const response = await fetch(apiUrl);
+      if(!response.ok) throw new Error("Folder tidak ditemukan.");
+      
+      const contents = await response.json();
+      const excelFiles = contents.filter(f => f.name.endsWith('.xlsx') || f.name.endsWith('.xls'));
+      
+      const masterFile = excelFiles.find(f => f.name.toUpperCase().includes('MASTER_DATA'));
+      if(masterFile) await processMasterFile(masterFile.download_url);
+
+      const reportFiles = excelFiles.filter(f => !f.name.toUpperCase().includes('MASTER_DATA'));
+      const newReports = [];
+
+      for(const file of reportFiles) {
+          const fileRes = await fetch(file.download_url);
+          const arrayBuffer = await fileRes.arrayBuffer();
+          const wb = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
+          const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+          
+          const processed = raw.map(r => {
+              let prof = String(r.Profile || r.Paket || '').trim();
+              let dp = prof, ds = 'Admin';
+              if(prof.includes('-')) { 
+                  let pts = prof.split('-'); 
+                  dp = pts[0].trim(); 
+                  ds = pts.slice(1).join('-').trim(); 
+              }
+
+              let dVal = r.Date;
+              let year = null, month = null;
+              
+              if(typeof dVal === 'number') {
+                  const dateObj = new Date((dVal - 25569) * 86400 * 1000);
+                  year = dateObj.getFullYear();
+                  month = dateObj.getMonth();
+                  dVal = `${dateObj.getDate()}/${dateObj.getMonth()+1}/${dateObj.getFullYear()}`;
+              } else if(typeof dVal === 'string') {
+                  const parts = dVal.split(/[-/]/);
+                  if(parts.length >= 3) {
+                     if(parts[0].length === 4) { year = parseInt(parts[0]); month = parseInt(parts[1])-1; }
+                     else { year = parseInt(parts[2]); month = parseInt(parts[1])-1; }
+                  }
+              }
+
+              return { date: dVal, year, month, sellerRaw: ds, pkgRaw: dp, price: parseFloat(r.Price || r.Harga || 0) };
+          });
+          newReports.push({ id: file.sha, name: file.name, rows: processed });
+      }
+
+      window.state.reports = newReports;
+      await saveToCloud(); 
+      updateUI();
+    } catch (err) { 
+        console.error(err); 
+    } finally { 
+        window.state.isSyncing = false; 
+        toggleSyncBtn(false); 
+    }
+  }
+
+  async function processMasterFile(url) {
+      const res = await fetch(url);
+      const ab = await res.arrayBuffer();
+      const wb = XLSX.read(new Uint8Array(ab), {type: 'array'});
+      const sheetName = wb.SheetNames.find(n => n.toUpperCase() === 'KOMISI') || wb.SheetNames[0];
+      const data = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]);
+      const newComms = {};
+      data.forEach(row => {
+          const s = String(row.Seller || row.Penjual || '').trim();
+          const p = String(row.Package || row.Paket || '').trim();
+          if(s && p) {
+              if(!newComms[s]) newComms[s] = {};
+              newComms[s][p] = { 
+                  seller: { value: parseFloat(row.SellerComm || row.KomisiPenjual || 0) }, 
+                  staff: { value: parseFloat(row.StaffComm || row.KomisiPegawai || 0) } 
+              };
+          }
+      });
+      window.state.commissions = newComms;
+  }
+
+  function calculateRowCommission(row) {
+      const s = row.sellerRaw, p = row.pkgRaw;
+      const cfg = (window.state.commissions[s] && window.state.commissions[s][p]) ? window.state.commissions[s][p] : { seller:{value:0}, staff:{value:0} };
+      return { sComm: cfg.seller.value, stComm: cfg.staff.value, fNet: Math.max(0, row.price - cfg.staff.value) };
+  }
+
+  function updateUI() {
+    const allRows = window.state.reports.flatMap(r => r.rows);
+    let tRev = 0, tS = 0, tSt = 0, tN = 0;
+    const tree = {};
+
+    allRows.forEach(row => {
+      tRev += row.price;
+      const { sComm, stComm, fNet } = calculateRowCommission(row);
+      tS += sComm; tSt += stComm; tN += fNet;
+      
+      if(row.year !== null && row.month !== null) {
+          if(!tree[row.year]) tree[row.year] = {};
+          if(!tree[row.year][row.month]) tree[row.year][row.month] = { net: 0, sTotal: 0, stTotal: 0, sellers: {} };
+          
+          const mData = tree[row.year][row.month];
+          mData.net += fNet;
+          mData.sTotal += sComm;
+          mData.stTotal += stComm;
+
+          if(!mData.sellers[row.sellerRaw]) mData.sellers[row.sellerRaw] = { sComm: 0, stComm: 0, transactions: [] };
+          mData.sellers[row.sellerRaw].sComm += sComm;
+          mData.sellers[row.sellerRaw].stComm += stComm;
+          mData.sellers[row.sellerRaw].transactions.push({ ...row, sCommRow: sComm, stCommRow: stComm });
+      }
+    });
+
+    window.state.currentTree = tree; 
+
+    document.getElementById('stat-rev').innerText = 'Rp ' + fmt(tRev);
+    document.getElementById('stat-comm').innerText = 'Rp ' + fmt(Math.round(tS));
+    document.getElementById('stat-staff').innerText = 'Rp ' + fmt(Math.round(tSt));
+    document.getElementById('stat-net').innerText = 'Rp ' + fmt(Math.round(tN));
+
+    renderRekap(tree);
+    renderChart();
+    document.getElementById('table-body').innerHTML = allRows.slice(0,100).map(r => `<tr><td>${r.date}</td><td>${r.pkgRaw}</td><td>${r.sellerRaw}</td><td>Rp ${fmt(r.price)}</td><td><span style="color:var(--green)">OK</span></td></tr>`).join('');
+  }
+
+  function renderRekap(tree) {
+    const container = document.getElementById('rekap-yearly-root');
+    const years = Object.keys(tree).sort((a,b) => b-a);
+    if(years.length === 0) return;
+
+    container.innerHTML = years.map(y => {
+        const months = Object.keys(tree[y]).sort((a,b) => b-a);
+        return `
+          <div class="year-block">
+              <div class="year-header"><h4>Tahun ${y}</h4></div>
+              <div class="monthly-list">
+                  ${months.map(m => {
+                      const d = tree[y][m];
+                      const sellerNames = Object.keys(d.sellers).sort();
+                      return `
+                      <div class="month-row">
+                          <button class="month-trigger" onclick="this.parentElement.classList.toggle('active')">
+                              <div class="month-title">
+                                  <span class="month-name">${monthNames[m]}</span>
+                                  <div class="month-summary">
+                                      <span style="color:var(--accent2)">Net: <b>Rp ${fmt(Math.round(d.net))}</b></span>
+                                      <span style="color:var(--green)">S: <b>Rp ${fmt(Math.round(d.sTotal))}</b></span>
+                                      <span style="color:var(--purple)">St: <b>Rp ${fmt(Math.round(d.stTotal))}</b></span>
+                                  </div>
+                              </div>
+                              <span style="font-size:10px; color:var(--text3)">DETAIL ▾</span>
+                          </button>
+                          <div class="month-details">
+                              <div class="detail-grid">
+                                  <div>
+                                      <table class="detail-table">
+                                          <thead><tr><th style="text-align:left">Penjual</th><th style="text-align:right">Komisi Penjual</th></tr></thead>
+                                          <tbody>
+                                              ${sellerNames.map(sn => `<tr><td>${sn}</td><td style="text-align:right; color:var(--green)">Rp ${fmt(Math.round(d.sellers[sn].sComm))}</td></tr>`).join('')}
+                                          </tbody>
+                                      </table>
+                                  </div>
+                                  <div>
+                                      <table class="detail-table">
+                                          <thead><tr><th style="text-align:left">Penjual</th><th style="text-align:right">Komisi Pegawai</th></tr></thead>
+                                          <tbody>
+                                              ${sellerNames.map(sn => `<tr><td>${sn}</td><td style="text-align:right; color:var(--purple)">Rp ${fmt(Math.round(d.sellers[sn].stComm))}</td></tr>`).join('')}
+                                          </tbody>
+                                      </table>
+                                  </div>
+                              </div>
+                              <div class="print-actions">
+                                  <div class="seller-print-group">
+                                      <p>CETAK LAPORAN PENJUAL (RINCIAN):</p>
+                                      <div style="display:flex; flex-wrap:wrap; gap:8px">
+                                          ${sellerNames.map(sn => `<button class="btn btn-outline btn-sm" onclick="printReportSellerDetail('${y}', '${m}', '${sn}')">👤 ${sn}</button>`).join('')}
+                                      </div>
+                                  </div>
+                                  <button class="btn btn-outline btn-sm" style="background:var(--bg3)" onclick="printReportStaffSummary('${y}', '${m}')">👔 Cetak Rekap Komisi Pegawai</button>
+                              </div>
+                          </div>
+                      </div>`;
+                  }).join('')}
+              </div>
+          </div>`;
+    }).join('');
+  }
+
+  function renderChart() {
+    const ctx = document.getElementById('chartRevenue')?.getContext('2d');
+    if(!ctx) return;
+    if(window.state.chart) window.state.chart.destroy();
+    window.state.chart = new Chart(ctx, { 
+      type:'line', 
+      data:{ 
+        labels: window.state.reports.map(r=>r.name.replace('.xlsx','')), 
+        datasets:[{ 
+          label:'Net Profit', 
+          data: window.state.reports.map(r=>r.rows.reduce((acc,row)=>acc+calculateRowCommission(row).fNet,0)), 
+          borderColor:'#3b82f6', 
+          tension:0.3, 
+          fill:true, 
+          backgroundColor:'rgba(59,130,246,0.1)' 
+        }] 
+      }, 
+      options:{ 
+        responsive:true, 
+        maintainAspectRatio:false, 
+        scales:{ 
+          y:{beginAtZero:true, grid:{color:'rgba(255,255,255,0.05)'}}, 
+          x:{grid:{display:false}} 
+        }, 
+        plugins:{legend:{display:false}} 
+      } 
+    });
+  }
+
+  function toggleSyncBtn(loading) {
+      const b = document.getElementById('btn-sync-top');
+      if(!b) return;
+      b.disabled = loading;
+      b.innerHTML = loading ? '<span class="loading-spinner"></span> Syncing...' : '🔄 Update Data';
+  }
+
+  function fmt(n) { return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
+
+  // Fungsi Global untuk UI
+  window.switchTab = function(id) {
+    document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.add('hidden'));
+    document.getElementById('tab-' + id).classList.remove('hidden');
+    document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+    document.getElementById('nav-' + id).classList.add('active');
+  }
+
+  window.printReportSellerDetail = function(year, monthIndex, sellerName) {
+    const data = window.state.currentTree[year][monthIndex];
+    if(!data || !data.sellers[sellerName]) return;
+    const sellerData = data.sellers[sellerName];
+    const monthName = monthNames[monthIndex];
+    const printArea = document.getElementById('print-area');
+    let totalSales = 0, totalComm = 0;
+    const sortedTx = [...sellerData.transactions].sort((a,b) => a.date.localeCompare(b.date));
+    sortedTx.forEach(tx => { totalSales += tx.price; totalComm += tx.sCommRow; });
+    let html = `<div class="print-container"><div class="print-header"><div class="print-header-left"><h1>LINK.NET</h1></div><div class="print-header-right"><p><b>LAPORAN PENJUALAN AGEN</b></p><p>Ref: LN/${year}/${(parseInt(monthIndex)+1).toString().padStart(2,'0')}/${sellerName.substring(0,3).toUpperCase()}</p></div></div><div class="print-meta"><div class="print-meta-box"><h4>Nama Penjual / Agen</h4><p>${sellerName}</p></div><div class="print-meta-box" style="border-color:#333; background:#f9f9f9"><h4>Periode Laporan</h4><p>${monthName} ${year}</p></div></div><div class="print-summary-total"><div><span style="font-size:10px; color:#666; text-transform:uppercase">Total Komisi Diterima</span><h3>Rp ${fmt(Math.round(totalComm))}</h3></div><div style="text-align:right"><span style="font-size:10px; color:#666; text-transform:uppercase">Volume Penjualan</span><h3>Rp ${fmt(Math.round(totalSales))}</h3></div></div><p style="font-size:10px; margin-top:30px; font-weight:bold; text-transform:uppercase; border-bottom:1px solid #000; padding-bottom:5px">Rincian Transaksi:</p><table class="print-table"><thead><tr><th style="width:30px">No</th><th style="width:100px">Tanggal</th><th>Paket / Voucher</th><th style="text-align:right; width:100px">Harga (Rp)</th><th style="text-align:right; width:120px">Komisi Agen (Rp)</th></tr></thead><tbody>`;
+    sortedTx.forEach((tx, index) => { html += `<tr><td style="text-align:center">${index + 1}</td><td>${tx.date}</td><td>${tx.pkgRaw}</td><td style="text-align:right">${fmt(tx.price)}</td><td style="text-align:right"><b>${fmt(Math.round(tx.sCommRow))}</b></td></tr>`; });
+    html += `</tbody></table><div class="print-footer-info"><div><p style="font-size:11px">Diterima Oleh,</p><br><br><br><p style="font-weight:bold; border-top:1px solid #000; display:inline-block; min-width:150px">${sellerName}</p></div><div><p style="font-size:11px">Manajemen LINK.NET,</p><br><br><br><p style="font-weight:bold; border-top:1px solid #000; display:inline-block; min-width:150px">Admin System</p></div></div><div class="print-date">Dokumen ini sah dikeluarkan oleh system LINK.NET pada ${new Date().toLocaleString('id-ID')}.</div></div>`;
+    printArea.innerHTML = html;
+    window.print();
+  }
+
+  window.printReportStaffSummary = function(year, monthIndex) {
+    const data = window.state.currentTree[year][monthIndex];
+    if(!data) return;
+    const monthName = monthNames[monthIndex];
+    const printArea = document.getElementById('print-area');
+    const sellers = Object.keys(data.sellers).sort();
+    let total = 0;
+    sellers.forEach(sn => total += data.sellers[sn].stComm);
+    let html = `<div class="print-container"><div class="print-header"><div class="print-header-left"><h1>LINK.NET</h1></div><div class="print-header-right"><p><b>REKAP KOMISI INTERNAL</b></p><p>Periode: ${monthName} ${year}</p></div></div><div class="print-summary-total"><div><span style="font-size:10px; color:#666; text-transform:uppercase">Total Pengeluaran Komisi Pegawai</span><h3>Rp ${fmt(Math.round(total))}</h3></div></div><table class="print-table" style="margin-top:20px"><thead><tr><th style="width:40px">No</th><th>Sumber Transaksi (Agen)</th><th style="text-align:right">Alokasi Komisi Pegawai</th></tr></thead><tbody>`;
+    sellers.forEach((sn, index) => { const val = data.sellers[sn].stComm; if(val > 0) { html += `<tr><td>${index + 1}</td><td>Agen: ${sn}</td><td style="text-align:right">Rp ${fmt(Math.round(val))}</td></tr>`; } });
+    html += `</tbody></table><div class="print-footer-info" style="margin-top:60px"><div style="margin-left:auto"><p style="font-size:11px">Penanggung Jawab,</p><br><br><br><p style="font-weight:bold; border-top:1px solid #000; display:inline-block; min-width:150px">Manager Operational</p></div></div></div>`;
+    printArea.innerHTML = html;
+    window.print();
+  }
+</script>
 <style>
+/* CSS dipertahankan sama seperti sebelumnya */
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#0f1117;--bg2:#161b27;--bg3:#1e2535;--surface:#242d3f;
@@ -25,32 +409,25 @@ header{display:flex;justify-content:space-between;align-items:center;padding-bot
 .nav button{background:transparent;border:none;color:var(--text2);padding:8px 16px;border-radius:var(--rs);cursor:pointer;font-weight:500;font-size:13px;transition:0.2s}
 .nav button.active{background:var(--surface);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,0.2)}
 .nav button:hover:not(.active){background:rgba(255,255,255,0.03);color:var(--text)}
-
 .panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:20px;height:fit-content;margin-bottom:20px}
 .panel h2{font-size:15px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px}
-
 .btn{background:var(--accent);color:#fff;border:none;padding:10px 20px;border-radius:var(--rs);cursor:pointer;font-weight:500;font-size:13px;display:inline-flex;align-items:center;gap:8px;transition:0.2s}
 .btn:hover:not(:disabled){background:var(--accent2);transform:translateY(-1px)}
 .btn-sm{padding:4px 10px;font-size:11px}
 .btn-refresh{background:var(--green)}
 .btn-outline{background:transparent; border:1px solid var(--border2); color:var(--text2)}
 .btn-outline:hover{background:rgba(255,255,255,0.05); color:var(--text)}
-
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:20px}
 .card h3{font-size:11px;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
 .card .val{font-size:22px;font-weight:700}
-
 .table-wrap{overflow-x:auto; max-height:500px; border-radius:var(--rs); border:1px solid var(--border)}
 table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px}
 th{text-align:left;color:var(--text);font-weight:700;padding:10px 12px;border-bottom:2px solid var(--border);background:var(--bg3)}
 td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
-
-/* REKAP STYLING */
 .yearly-stack {display: flex; flex-direction: column; gap: 20px; margin-top: 10px;}
 .year-block {background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden;}
 .year-header {background: rgba(255,255,255,0.03); padding: 12px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;}
 .year-header h4 {font-size: 18px; color: var(--accent2); font-weight: 800;}
-
 .monthly-list {display: flex; flex-direction: column; gap: 1px; background: var(--border);}
 .month-row {background: var(--bg2); transition: 0.2s;}
 .month-trigger {width: 100%; background: none; border: none; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: var(--text); outline: none;}
@@ -59,20 +436,16 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
 .month-name {font-weight: 700; font-size: 14px; width: 100px; text-align: left;}
 .month-summary {display: flex; gap: 20px; font-size: 12px;}
 .month-summary span b {color: var(--text);}
-
 .month-details {display: none; padding: 15px 20px; background: var(--bg); border-top: 1px solid var(--border); font-size: 12px;}
 .month-row.active .month-details {display: block;}
 .month-row.active .month-trigger {background: var(--bg3);}
-
 .detail-grid {display: grid; grid-template-columns: 1fr 1fr; gap: 20px;}
 .detail-table {width: 100%; border-collapse: collapse;}
 .detail-table th {background: none; border-bottom: 1px solid var(--border); padding: 8px 0; color: var(--text3); font-size: 10px; text-transform: uppercase;}
 .detail-table td {padding: 8px 0; border-bottom: 1px dotted var(--border); color: var(--text2);}
-
 .print-actions { margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 10px; }
 .seller-print-group { background: rgba(255,255,255,0.03); padding: 10px; border-radius: var(--rs); width: 100%; }
 .seller-print-group p { margin-bottom: 10px; font-weight: 600; color: var(--text2); font-size: 11px; }
-
 .hidden{display:none}
 .loading-spinner { border: 2px solid rgba(255,255,255,0.1); border-left-color: var(--accent); border-radius: 50%; width: 14px; height: 14px; animation: spin 1s linear infinite; display: inline-block; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -86,29 +459,19 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
     .print-header { border-bottom: 3px solid #000; padding-bottom: 15px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: flex-end; }
     .print-header-left h1 { font-size: 28px; margin: 0; letter-spacing: 1px; color: #000; }
     .print-header-right { text-align: right; font-size: 12px; }
-    
     .print-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 30px; }
     .print-meta-box { border: 1px solid #ddd; padding: 15px; border-radius: 4px; }
     .print-meta-box h4 { margin-bottom: 10px; font-size: 10px; text-transform: uppercase; color: #666; border-bottom: 1px solid #eee; padding-bottom: 5px; }
     .print-meta-box p { font-size: 14px; font-weight: bold; margin: 0; }
-
     .print-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
     .print-table th { background: #f5f5f5 !important; border: 1px solid #333; padding: 10px 8px; text-align: left; font-weight: bold; }
     .print-table td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    .print-table tfoot td { border: 1px solid #333; padding: 10px 8px; font-weight: bold; font-size: 13px; }
-    
     .print-summary-total { margin-top: 20px; padding: 15px; background: #f9f9f9; border: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
     .print-summary-total h3 { margin: 0; font-size: 16px; }
-
     .print-footer-info { margin-top: 40px; display: flex; justify-content: space-between; }
     .print-footer-info div { text-align: center; width: 200px; }
     .print-date { font-size: 9px; color: #999; margin-top: 50px; text-align: center; }
-    
     .no-print { display: none !important; }
-    
-    /* Mencegah header berulang di tiap page jika menggunakan thead browser standar */
-    thead { display: table-header-group; } 
-    tfoot { display: table-footer-group; }
 }
 </style>
 </head>
@@ -123,7 +486,10 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
       <button id="nav-data" onclick="switchTab('data')">📊 Riwayat</button>
       <button id="nav-settings" onclick="switchTab('settings')">⚙️ Setting File</button>
     </div>
-    <button class="btn btn-refresh btn-sm" id="btn-sync-top" onclick="syncFromGitHub()">🔄 Update Data</button>
+    <div style="display:flex; align-items:center; gap:10px">
+        <span id="auth-status" style="font-size:10px; color:var(--text3)">Connecting Cloud...</span>
+        <button class="btn btn-refresh btn-sm" id="btn-sync-top" onclick="syncFromGitHub()">🔄 Update Data</button>
+    </div>
   </header>
 
   <!-- DASHBOARD -->
@@ -134,24 +500,23 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
       <div class="card"><h3>Komisi Pegawai</h3><div class="val" id="stat-staff" style="color:var(--purple)">Rp 0</div></div>
       <div class="card"><h3>Net Owner (Total)</h3><div class="val" id="stat-net" style="color:var(--accent2)">Rp 0</div></div>
     </div>
-
     <div class="panel" style="margin-top:20px">
        <h2>📈 Tren Performa Bulanan</h2>
        <div style="height:250px"><canvas id="chartRevenue"></canvas></div>
     </div>
   </div>
 
-  <!-- REKAP PER SELLER & DETAIL BULANAN -->
+  <!-- REKAP -->
   <div id="tab-rekap" class="hidden no-print">
     <div class="panel">
       <h2>💰 Rekap Detail Bulanan & Pembagian Komisi</h2>
       <div id="rekap-yearly-root" class="yearly-stack">
-         <p style="font-size:12px; color:var(--text3); padding:20px">Klik "Update Data" untuk memuat rincian...</p>
+         <p style="font-size:12px; color:var(--text3); padding:20px">Menunggu data dari Cloud...</p>
       </div>
     </div>
   </div>
 
-  <!-- DATA HISTORY -->
+  <!-- DATA -->
   <div id="tab-data" class="hidden no-print">
     <div class="panel">
       <h2>📊 Riwayat 100 Transaksi Terakhir</h2>
@@ -169,454 +534,18 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
     <div class="panel">
       <h2>⚙️ Informasi Sumber Data</h2>
       <div style="font-size:13px; color:var(--text2); display:flex; flex-direction:column; gap:10px">
-        <p>Aplikasi ini tersinkronisasi otomatis dengan Database Cloud:</p>
+        <p>Aplikasi ini tersinkronisasi otomatis dengan Database Cloud (Firestore):</p>
         <div style="background:var(--bg3); padding:15px; border-radius:var(--rs); border:1px solid var(--border)">
-            <div id="info-repo" style="font-family:monospace; color:var(--accent2)"></div>
-            <div id="info-path" style="font-family:monospace; margin-top:5px"></div>
+            <div id="info-repo" style="font-family:monospace; color:var(--accent2)">Source: Cloud Sync Engine</div>
+            <div id="info-path" style="font-family:monospace; margin-top:5px">Path: /artifacts/[appId]/public/data/states/dashboard_main</div>
         </div>
-        <p style="margin-top:10px"><b>Catatan:</b> Konfigurasi komisi dikelola melalui file Master Data di direktori utama.</p>
+        <p style="margin-top:10px; color:var(--amber)">⚠️ <b>Penting:</b> Klik "Update Data" agar data terbaru dari GitHub terunggah ke Cloud.</p>
       </div>
     </div>
   </div>
 
-  <!-- PRINT CONTAINER (ONLY VISIBLE DURING PRINT) -->
   <div id="print-area"></div>
 </div>
 
-<script>
-const GH_CONFIG = {
-  user: 'username_anda', 
-  repo: 'nama_repo_anda', 
-  path: 'DATA MASTER'     
-};
-
-const state = {
-  master: { sellers: [], packages: [] },
-  commissions: {}, 
-  reports: [],
-  chart: null,
-  isSyncing: false,
-  currentTree: {} 
-}
-
-const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-
-window.onload = () => {
-  const sc = localStorage.getItem('mk_comm_auto');
-  const sr = localStorage.getItem('mk_reports_auto');
-  const sm = localStorage.getItem('mk_master_auto');
-  
-  if(sc) state.commissions = JSON.parse(sc);
-  if(sr) state.reports = JSON.parse(sr);
-  if(sm) state.master = JSON.parse(sm);
-
-  document.getElementById('info-repo').innerText = `Source: Cloud Sync Engine`;
-  document.getElementById('info-path').innerText = `Dir: ${GH_CONFIG.path}`;
-
-  updateUI();
-  syncFromGitHub();
-}
-
-async function syncFromGitHub() {
-  if(!GH_CONFIG.user || GH_CONFIG.user === 'username_anda') return;
-  if(state.isSyncing) return;
-  state.isSyncing = true;
-  toggleSyncBtn(true);
-
-  try {
-    const apiUrl = `https://api.github.com/repos/${GH_CONFIG.user}/${GH_CONFIG.repo}/contents/${encodeURIComponent(GH_CONFIG.path)}`;
-    const response = await fetch(apiUrl);
-    if(!response.ok) throw new Error("Folder tidak ditemukan.");
-    
-    const contents = await response.json();
-    const excelFiles = contents.filter(f => f.name.endsWith('.xlsx') || f.name.endsWith('.xls'));
-    
-    const masterFile = excelFiles.find(f => f.name.toUpperCase().includes('MASTER_DATA'));
-    if(masterFile) await processMasterFile(masterFile.download_url);
-
-    const reportFiles = excelFiles.filter(f => !f.name.toUpperCase().includes('MASTER_DATA'));
-    const newReports = [];
-
-    for(const file of reportFiles) {
-        const fileRes = await fetch(file.download_url);
-        const arrayBuffer = await fileRes.arrayBuffer();
-        const wb = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
-        const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-        
-        const processed = raw.map(r => {
-            let prof = String(r.Profile || r.Paket || '').trim();
-            let dp = prof, ds = 'Admin';
-            if(prof.includes('-')) { 
-                let pts = prof.split('-'); 
-                dp = pts[0].trim(); 
-                ds = pts.slice(1).join('-').trim(); 
-            }
-
-            let dVal = r.Date;
-            let year = null, month = null;
-            
-            if(typeof dVal === 'number') {
-                const dateObj = new Date((dVal - 25569) * 86400 * 1000);
-                year = dateObj.getFullYear();
-                month = dateObj.getMonth();
-                dVal = `${dateObj.getDate()}/${dateObj.getMonth()+1}/${dateObj.getFullYear()}`;
-            } else if(typeof dVal === 'string') {
-                const parts = dVal.split(/[-/]/);
-                if(parts.length >= 3) {
-                   if(parts[0].length === 4) { year = parseInt(parts[0]); month = parseInt(parts[1])-1; }
-                   else { year = parseInt(parts[2]); month = parseInt(parts[1])-1; }
-                }
-            }
-
-            return { date: dVal, year, month, sellerRaw: ds, pkgRaw: dp, price: parseFloat(r.Price || r.Harga || 0) };
-        });
-        newReports.push({ id: file.sha, name: file.name, rows: processed });
-    }
-
-    state.reports = newReports;
-    saveData();
-    updateUI();
-  } catch (err) { console.error(err); } 
-  finally { state.isSyncing = false; toggleSyncBtn(false); }
-}
-
-async function processMasterFile(url) {
-    const res = await fetch(url);
-    const ab = await res.arrayBuffer();
-    const wb = XLSX.read(new Uint8Array(ab), {type: 'array'});
-    const sheetName = wb.SheetNames.find(n => n.toUpperCase() === 'KOMISI') || wb.SheetNames[0];
-    const data = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]);
-    const newComms = {};
-    data.forEach(row => {
-        const s = String(row.Seller || row.Penjual || '').trim();
-        const p = String(row.Package || row.Paket || '').trim();
-        if(s && p) {
-            if(!newComms[s]) newComms[s] = {};
-            newComms[s][p] = { 
-                seller: { value: parseFloat(row.SellerComm || row.KomisiPenjual || 0) }, 
-                staff: { value: parseFloat(row.StaffComm || row.KomisiPegawai || 0) } 
-            };
-        }
-    });
-    state.commissions = newComms;
-}
-
-function calculateRowCommission(row) {
-    const s = row.sellerRaw, p = row.pkgRaw;
-    const cfg = (state.commissions[s] && state.commissions[s][p]) ? state.commissions[s][p] : { seller:{value:0}, staff:{value:0} };
-    return { sComm: cfg.seller.value, stComm: cfg.staff.value, fNet: Math.max(0, row.price - cfg.staff.value) };
-}
-
-function updateUI() {
-  const allRows = state.reports.flatMap(r => r.rows);
-  let tRev = 0, tS = 0, tSt = 0, tN = 0;
-  
-  const tree = {};
-
-  allRows.forEach(row => {
-    tRev += row.price;
-    const { sComm, stComm, fNet } = calculateRowCommission(row);
-    tS += sComm; tSt += stComm; tN += fNet;
-    
-    if(row.year !== null && row.month !== null) {
-        if(!tree[row.year]) tree[row.year] = {};
-        if(!tree[row.year][row.month]) tree[row.year][row.month] = { net: 0, sTotal: 0, stTotal: 0, sellers: {} };
-        
-        const mData = tree[row.year][row.month];
-        mData.net += fNet;
-        mData.sTotal += sComm;
-        mData.stTotal += stComm;
-
-        if(!mData.sellers[row.sellerRaw]) mData.sellers[row.sellerRaw] = { sComm: 0, stComm: 0, transactions: [] };
-        mData.sellers[row.sellerRaw].sComm += sComm;
-        mData.sellers[row.sellerRaw].stComm += stComm;
-        mData.sellers[row.sellerRaw].transactions.push({ ...row, sCommRow: sComm, stCommRow: stComm });
-    }
-  });
-
-  state.currentTree = tree; 
-
-  document.getElementById('stat-rev').innerText = 'Rp ' + fmt(tRev);
-  document.getElementById('stat-comm').innerText = 'Rp ' + fmt(Math.round(tS));
-  document.getElementById('stat-staff').innerText = 'Rp ' + fmt(Math.round(tSt));
-  document.getElementById('stat-net').innerText = 'Rp ' + fmt(Math.round(tN));
-
-  renderRekap(tree);
-  renderChart();
-  document.getElementById('table-body').innerHTML = allRows.slice(0,100).map(r => `<tr><td>${r.date}</td><td>${r.pkgRaw}</td><td>${r.sellerRaw}</td><td>Rp ${fmt(r.price)}</td><td><span style="color:var(--green)">OK</span></td></tr>`).join('');
-}
-
-function renderRekap(tree) {
-  const container = document.getElementById('rekap-yearly-root');
-  const years = Object.keys(tree).sort((a,b) => b-a);
-  
-  if(years.length === 0) return;
-
-  container.innerHTML = years.map(y => {
-      const months = Object.keys(tree[y]).sort((a,b) => b-a);
-      return `
-        <div class="year-block">
-            <div class="year-header"><h4>Tahun ${y}</h4></div>
-            <div class="monthly-list">
-                ${months.map(m => {
-                    const d = tree[y][m];
-                    const sellerNames = Object.keys(d.sellers).sort();
-                    return `
-                    <div class="month-row">
-                        <button class="month-trigger" onclick="this.parentElement.classList.toggle('active')">
-                            <div class="month-title">
-                                <span class="month-name">${monthNames[m]}</span>
-                                <div class="month-summary">
-                                    <span style="color:var(--accent2)">Net: <b>Rp ${fmt(Math.round(d.net))}</b></span>
-                                    <span style="color:var(--green)">S: <b>Rp ${fmt(Math.round(d.sTotal))}</b></span>
-                                    <span style="color:var(--purple)">St: <b>Rp ${fmt(Math.round(d.stTotal))}</b></span>
-                                </div>
-                            </div>
-                            <span style="font-size:10px; color:var(--text3)">DETAIL ▾</span>
-                        </button>
-                        <div class="month-details">
-                            <div class="detail-grid">
-                                <div>
-                                    <table class="detail-table">
-                                        <thead><tr><th style="text-align:left">Penjual</th><th style="text-align:right">Komisi Penjual</th></tr></thead>
-                                        <tbody>
-                                            ${sellerNames.map(sn => `<tr><td>${sn}</td><td style="text-align:right; color:var(--green)">Rp ${fmt(Math.round(d.sellers[sn].sComm))}</td></tr>`).join('')}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div>
-                                    <table class="detail-table">
-                                        <thead><tr><th style="text-align:left">Penjual</th><th style="text-align:right">Komisi Pegawai</th></tr></thead>
-                                        <tbody>
-                                            ${sellerNames.map(sn => `<tr><td>${sn}</td><td style="text-align:right; color:var(--purple)">Rp ${fmt(Math.round(d.sellers[sn].stComm))}</td></tr>`).join('')}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <div class="print-actions">
-                                <div class="seller-print-group">
-                                    <p>CETAK LAPORAN PENJUAL (RINCIAN):</p>
-                                    <div style="display:flex; flex-wrap:wrap; gap:8px">
-                                        ${sellerNames.map(sn => `<button class="btn btn-outline btn-sm" onclick="printReportSellerDetail('${y}', '${m}', '${sn}')">👤 ${sn}</button>`).join('')}
-                                    </div>
-                                </div>
-                                <button class="btn btn-outline btn-sm" style="background:var(--bg3)" onclick="printReportStaffSummary('${y}', '${m}')">👔 Cetak Rekap Komisi Pegawai</button>
-                            </div>
-                        </div>
-                    </div>`;
-                }).join('')}
-            </div>
-        </div>`;
-  }).join('');
-}
-
-// Fungsi Cetak Laporan Penjual (Sangat Detail - Per Seller - Brand: LINK.NET)
-function printReportSellerDetail(year, monthIndex, sellerName) {
-    const data = state.currentTree[year][monthIndex];
-    if(!data || !data.sellers[sellerName]) return;
-
-    const sellerData = data.sellers[sellerName];
-    const monthName = monthNames[monthIndex];
-    const printArea = document.getElementById('print-area');
-
-    let totalSales = 0;
-    let totalComm = 0;
-    const sortedTx = [...sellerData.transactions].sort((a,b) => a.date.localeCompare(b.date));
-    
-    sortedTx.forEach(tx => {
-        totalSales += tx.price;
-        totalComm += tx.sCommRow;
-    });
-
-    let html = `
-        <div class="print-container">
-            <div class="print-header">
-                <div class="print-header-left">
-                    <h1>LINK.NET</h1>
-                </div>
-                <div class="print-header-right">
-                    <p><b>LAPORAN PENJUALAN AGEN</b></p>
-                    <p>Ref: LN/${year}/${(parseInt(monthIndex)+1).toString().padStart(2,'0')}/${sellerName.substring(0,3).toUpperCase()}</p>
-                </div>
-            </div>
-
-            <div class="print-meta">
-                <div class="print-meta-box">
-                    <h4>Nama Penjual / Agen</h4>
-                    <p>${sellerName}</p>
-                </div>
-                <div class="print-meta-box" style="border-color:#333; background:#f9f9f9">
-                    <h4>Periode Laporan</h4>
-                    <p>${monthName} ${year}</p>
-                </div>
-            </div>
-
-            <div class="print-summary-total">
-                <div>
-                    <span style="font-size:10px; color:#666; text-transform:uppercase">Total Komisi Diterima</span>
-                    <h3>Rp ${fmt(Math.round(totalComm))}</h3>
-                </div>
-                <div style="text-align:right">
-                    <span style="font-size:10px; color:#666; text-transform:uppercase">Volume Penjualan</span>
-                    <h3>Rp ${fmt(Math.round(totalSales))}</h3>
-                </div>
-            </div>
-
-            <p style="font-size:10px; margin-top:30px; font-weight:bold; text-transform:uppercase; border-bottom:1px solid #000; padding-bottom:5px">Rincian Transaksi:</p>
-            
-            <table class="print-table">
-                <thead>
-                    <tr>
-                        <th style="width:30px">No</th>
-                        <th style="width:100px">Tanggal</th>
-                        <th>Paket / Voucher</th>
-                        <th style="text-align:right; width:100px">Harga (Rp)</th>
-                        <th style="text-align:right; width:120px">Komisi Agen (Rp)</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-
-    sortedTx.forEach((tx, index) => {
-        html += `
-            <tr>
-                <td style="text-align:center">${index + 1}</td>
-                <td>${tx.date}</td>
-                <td>${tx.pkgRaw}</td>
-                <td style="text-align:right">${fmt(tx.price)}</td>
-                <td style="text-align:right"><b>${fmt(Math.round(tx.sCommRow))}</b></td>
-            </tr>
-        `;
-    });
-
-    html += `
-                </tbody>
-            </table>
-            
-            <div class="print-footer-info">
-                <div>
-                    <p style="font-size:11px">Diterima Oleh,</p>
-                    <br><br><br>
-                    <p style="font-weight:bold; border-top:1px solid #000; display:inline-block; min-width:150px">${sellerName}</p>
-                </div>
-                <div>
-                    <p style="font-size:11px">Manajemen LINK.NET,</p>
-                    <br><br><br>
-                    <p style="font-weight:bold; border-top:1px solid #000; display:inline-block; min-width:150px">Admin System</p>
-                </div>
-            </div>
-
-            <div class="print-date">
-                Dokumen ini sah dikeluarkan oleh system LINK.NET pada ${new Date().toLocaleString('id-ID')}.
-            </div>
-        </div>
-    `;
-
-    printArea.innerHTML = html;
-    window.print();
-}
-
-// Fungsi Cetak Rekap Pegawai (Brand: LINK.NET)
-function printReportStaffSummary(year, monthIndex) {
-    const data = state.currentTree[year][monthIndex];
-    if(!data) return;
-
-    const monthName = monthNames[monthIndex];
-    const printArea = document.getElementById('print-area');
-    const sellers = Object.keys(data.sellers).sort();
-
-    let total = 0;
-    sellers.forEach(sn => total += data.sellers[sn].stComm);
-
-    let html = `
-        <div class="print-container">
-            <div class="print-header">
-                <div class="print-header-left">
-                    <h1>LINK.NET</h1>
-                </div>
-                <div class="print-header-right">
-                    <p><b>REKAP KOMISI INTERNAL</b></p>
-                    <p>Periode: ${monthName} ${year}</p>
-                </div>
-            </div>
-
-            <div class="print-summary-total">
-                <div>
-                    <span style="font-size:10px; color:#666; text-transform:uppercase">Total Pengeluaran Komisi Pegawai</span>
-                    <h3>Rp ${fmt(Math.round(total))}</h3>
-                </div>
-            </div>
-
-            <table class="print-table" style="margin-top:20px">
-                <thead>
-                    <tr>
-                        <th style="width:40px">No</th>
-                        <th>Sumber Transaksi (Agen)</th>
-                        <th style="text-align:right">Alokasi Komisi Pegawai</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-
-    sellers.forEach((sn, index) => {
-        const val = data.sellers[sn].stComm;
-        if(val > 0) {
-            html += `
-                <tr>
-                    <td>${index + 1}</td>
-                    <td>Agen: ${sn}</td>
-                    <td style="text-align:right">Rp ${fmt(Math.round(val))}</td>
-                </tr>
-            `;
-        }
-    });
-
-    html += `
-                </tbody>
-            </table>
-            
-            <div class="print-footer-info" style="margin-top:60px">
-                <div style="margin-left:auto">
-                    <p style="font-size:11px">Penanggung Jawab,</p>
-                    <br><br><br>
-                    <p style="font-weight:bold; border-top:1px solid #000; display:inline-block; min-width:150px">Manager Operational</p>
-                </div>
-            </div>
-        </div>
-    `;
-
-    printArea.innerHTML = html;
-    window.print();
-}
-
-function switchTab(id) {
-  document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.add('hidden'));
-  document.getElementById('tab-' + id).classList.remove('hidden');
-  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
-  document.getElementById('nav-' + id).classList.add('active');
-}
-
-function toggleSyncBtn(loading) {
-    const b = document.getElementById('btn-sync-top');
-    if(!b) return;
-    b.disabled = loading;
-    b.innerHTML = loading ? '<span class="loading-spinner"></span> Syncing...' : '🔄 Update Data';
-}
-
-function renderChart() {
-  const ctx = document.getElementById('chartRevenue')?.getContext('2d');
-  if(!ctx) return;
-  if(state.chart) state.chart.destroy();
-  state.chart = new Chart(ctx, { type:'line', data:{ labels: state.reports.map(r=>r.name.replace('.xlsx','')), datasets:[{ label:'Net Profit', data: state.reports.map(r=>r.rows.reduce((acc,row)=>acc+calculateRowCommission(row).fNet,0)), borderColor:'#3b82f6', tension:0.3, fill:true, backgroundColor:'rgba(59,130,246,0.1)' }] }, options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{beginAtZero:true, grid:{color:'rgba(255,255,255,0.05)'}}, x:{grid:{display:false}} }, plugins:{legend:{display:false}} } });
-}
-
-function saveData() {
-  localStorage.setItem('mk_comm_auto', JSON.stringify(state.commissions));
-  localStorage.setItem('mk_reports_auto', JSON.stringify(state.reports));
-  localStorage.setItem('mk_master_auto', JSON.stringify(state.master));
-}
-
-function fmt(n) { return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
-</script>
 </body>
 </html>
