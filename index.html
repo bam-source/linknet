@@ -638,6 +638,22 @@ function getRowTimestamp(row){
   return 0;
 }
 
+function formatTimeValue(raw){
+  if(raw===null||raw===undefined||raw==='') return '-';
+  if(typeof raw==='number'){
+    const totalSeconds=Math.round(raw*24*60*60);
+    const hh=String(Math.floor(totalSeconds/3600)%24).padStart(2,'0');
+    const mm=String(Math.floor((totalSeconds%3600)/60)).padStart(2,'0');
+    const ss=String(totalSeconds%60).padStart(2,'0');
+    return `${hh}:${mm}:${ss}`;
+  }
+  const str=String(raw).trim();
+  if(/^\d+(\.\d+)?(E-?\d+)?$/i.test(str)){
+    return formatTimeValue(parseFloat(str));
+  }
+  return str;
+}
+
 function getReportPeriod(report){
   const datedRows=(report.rows||[]).filter(row=>row.year!==null&&row.month!==null);
   if(datedRows.length){
@@ -689,8 +705,7 @@ async function syncFromGitHub() {
     const res=await fetch(api);
     if(!res.ok) throw new Error('Folder tidak ditemukan');
     const contents=await res.json();
-    const xls=contents.filter(f=>f.name.endsWith('.xlsx')||f.name.endsWith('.xls'));
-    const reportFiles=xls.filter(f=>!f.name.toUpperCase().includes('MASTER_DATA'));
+    const reportFiles=contents.filter(f=>f.name.endsWith('.xlsx')||f.name.endsWith('.xls'));
     const newR=[];
     for(const file of reportFiles){
       const ab=await (await fetch(file.download_url)).arrayBuffer();
@@ -702,7 +717,13 @@ async function syncFromGitHub() {
         let dVal=r.Date, year=null, month=null;
         if(typeof dVal==='number'){const d=new Date((dVal-25569)*86400*1000);year=d.getFullYear();month=d.getMonth();dVal=`${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`;}
         else if(typeof dVal==='string'){const pts=dVal.split(/[-/]/);if(pts.length>=3){if(pts[0].length===4){year=parseInt(pts[0]);month=parseInt(pts[1])-1;}else{year=parseInt(pts[2]);month=parseInt(pts[1])-1;}}}
-        return{date:dVal,year,month,sellerRaw:ds,pkgRaw:dp,price:parseFloat(r.Price||r.Harga||0)};
+        return{
+          date:dVal,
+          time:formatTimeValue(r.Time||r.Waktu||''),
+          voucherCode:String(r.Username||r.KodeVoucher||r.VoucherCode||'').trim(),
+          note:String(r.Comment||r.Keterangan||'').trim(),
+          year,month,sellerRaw:ds,pkgRaw:dp,price:parseFloat(r.Price||r.Harga||0)
+        };
       });
       newR.push({id:file.sha,name:file.name,rows});
     }
@@ -1085,12 +1106,12 @@ function printSeller(year,mi,sellerName){
   const txs=[...sd.transactions].sort((a,b)=>getRowTimestamp(a)-getRowTimestamp(b));
   txs.forEach(t=>{tS+=t.price;tC+=t.sCommRow;});
   document.getElementById('print-area').innerHTML=`<div class="print-container">
-    <div class="print-header"><div class="print-header-left"><h1>LINK.NET</h1></div><div class="print-header-right"><p><b>LAPORAN PENJUALAN AGEN</b></p><p>Ref: LN/${year}/${(parseInt(mi)+1).toString().padStart(2,'0')}/${sellerName.substring(0,3).toUpperCase()}</p></div></div>
+    <div class="print-header"><div class="print-header-left"><h1>LINK.NET</h1></div><div class="print-header-right"><p><b>LAPORAN PENJUALAN AGEN</b></p><p>Ref: LN/${year}/${mn}</p></div></div>
     <div class="print-meta"><div class="print-meta-box"><h4>Nama Penjual / Agen</h4><p>${sellerName}</p></div><div class="print-meta-box" style="background:#f9f9f9"><h4>Periode</h4><p>${mn} ${year}</p></div></div>
-    <div class="print-summary-total"><div><span style="font-size:10px;color:#666;text-transform:uppercase">Total Komisi</span><h3>Rp ${fmt(Math.round(tC))}</h3></div><div style="text-align:right"><span style="font-size:10px;color:#666;text-transform:uppercase">Volume Penjualan</span><h3>Rp ${fmt(Math.round(tS))}</h3></div></div>
+    <div class="print-summary-total"><div><span style="font-size:10px;color:#666;text-transform:uppercase">HASIL PENJUAL</span><h3>Rp ${fmt(Math.round(tC))}</h3></div><div style="text-align:right"><span style="font-size:10px;color:#666;text-transform:uppercase">TOTAL TAGIHAN</span><h3>Rp ${fmt(Math.round(tS))}</h3></div></div>
     <p style="font-size:10px;margin-top:28px;font-weight:bold;text-transform:uppercase;border-bottom:1px solid #000;padding-bottom:5px">Rincian Transaksi:</p>
-    <table class="print-table"><thead><tr><th style="width:28px">No</th><th style="width:90px">Tanggal</th><th>Paket</th><th style="text-align:right;width:90px">Harga</th><th style="text-align:right;width:110px">Komisi Agen</th></tr></thead>
-    <tbody>${txs.map((t,i)=>`<tr><td style="text-align:center">${i+1}</td><td>${t.date}</td><td>${t.pkgRaw}</td><td style="text-align:right">${fmt(t.price)}</td><td style="text-align:right"><b>${fmt(Math.round(t.sCommRow))}</b></td></tr>`).join('')}</tbody></table>
+    <table class="print-table"><thead><tr><th style="width:28px">No</th><th style="width:88px">Tanggal</th><th style="width:74px">Waktu</th><th style="width:94px">Kode Voucher</th><th>Paket</th><th style="text-align:right;width:82px">Harga</th><th style="text-align:right;width:100px">Hasil Penjual</th></tr></thead>
+    <tbody>${txs.map((t,i)=>`<tr><td style="text-align:center">${i+1}</td><td>${t.date}</td><td>${t.time||'-'}</td><td>${t.voucherCode||'-'}</td><td>${t.pkgRaw}</td><td style="text-align:right">${fmt(t.price)}</td><td style="text-align:right"><b>${fmt(Math.round(t.sCommRow))}</b></td></tr>`).join('')}</tbody></table>
     <div class="print-footer-info"><div><p style="font-size:11px">Diterima Oleh,</p><br><br><br><p style="font-weight:bold;border-top:1px solid #000;display:inline-block;min-width:150px">${sellerName}</p></div><div><p style="font-size:11px">Manajemen LINK.NET,</p><br><br><br><p style="font-weight:bold;border-top:1px solid #000;display:inline-block;min-width:150px">Admin System</p></div></div>
     <div class="print-date">Dokumen ini dikeluarkan oleh system LINK.NET pada ${new Date().toLocaleString('id-ID')}.</div>
   </div>`;
