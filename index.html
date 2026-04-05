@@ -33,6 +33,8 @@ header{display:flex;justify-content:space-between;align-items:center;padding-bot
 .btn:hover:not(:disabled){background:var(--accent2);transform:translateY(-1px)}
 .btn-sm{padding:4px 10px;font-size:11px}
 .btn-refresh{background:var(--green)}
+.btn-outline{background:transparent; border:1px solid var(--border2); color:var(--text2)}
+.btn-outline:hover{background:rgba(255,255,255,0.05); color:var(--text)}
 
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:20px}
 .card h3{font-size:11px;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
@@ -67,15 +69,29 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
 .detail-table th {background: none; border-bottom: 1px solid var(--border); padding: 8px 0; color: var(--text3); font-size: 10px; text-transform: uppercase;}
 .detail-table td {padding: 8px 0; border-bottom: 1px dotted var(--border); color: var(--text2);}
 
+.print-actions { margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border); display: flex; gap: 10px; }
+
 .hidden{display:none}
 .loading-spinner { border: 2px solid rgba(255,255,255,0.1); border-left-color: var(--accent); border-radius: 50%; width: 14px; height: 14px; animation: spin 1s linear infinite; display: inline-block; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* PRINT STYLES */
+@media print {
+    body * { visibility: hidden; }
+    #print-area, #print-area * { visibility: visible; }
+    #print-area { position: absolute; left: 0; top: 0; width: 100%; color: #000; background: #fff; padding: 20px; }
+    .print-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    .print-table th, .print-table td { border: 1px solid #ddd; padding: 10px; text-align: left; color: #000; }
+    .print-header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+    .print-footer { margin-top: 30px; font-size: 10px; text-align: right; }
+    .no-print { display: none !important; }
+}
 </style>
 </head>
 <body>
 
 <div class="app">
-  <header>
+  <header class="no-print">
     <div class="logo">MikMon <span>PRO</span></div>
     <div class="nav">
       <button id="nav-dashboard" class="active" onclick="switchTab('dashboard')">Dashboard</button>
@@ -87,7 +103,7 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
   </header>
 
   <!-- DASHBOARD -->
-  <div id="tab-dashboard">
+  <div id="tab-dashboard" class="no-print">
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px">
       <div class="card"><h3>Revenue (Total)</h3><div class="val" id="stat-rev">Rp 0</div></div>
       <div class="card"><h3>Komisi Penjual</h3><div class="val" id="stat-comm" style="color:var(--green)">Rp 0</div></div>
@@ -102,7 +118,7 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
   </div>
 
   <!-- REKAP PER SELLER & DETAIL BULANAN -->
-  <div id="tab-rekap" class="hidden">
+  <div id="tab-rekap" class="hidden no-print">
     <div class="panel">
       <h2>💰 Rekap Detail Bulanan & Pembagian Komisi</h2>
       <div id="rekap-yearly-root" class="yearly-stack">
@@ -112,7 +128,7 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
   </div>
 
   <!-- DATA HISTORY -->
-  <div id="tab-data" class="hidden">
+  <div id="tab-data" class="hidden no-print">
     <div class="panel">
       <h2>📊 Riwayat 100 Transaksi Terakhir</h2>
       <div class="table-wrap">
@@ -125,7 +141,7 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
   </div>
 
   <!-- SETTINGS -->
-  <div id="tab-settings" class="hidden">
+  <div id="tab-settings" class="hidden no-print">
     <div class="panel">
       <h2>⚙️ Informasi Sumber Data</h2>
       <div style="font-size:13px; color:var(--text2); display:flex; flex-direction:column; gap:10px">
@@ -138,6 +154,9 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
       </div>
     </div>
   </div>
+
+  <!-- PRINT CONTAINER (HIDDEN IN UI) -->
+  <div id="print-area"></div>
 </div>
 
 <script>
@@ -155,7 +174,8 @@ const state = {
   commissions: {}, 
   reports: [],
   chart: null,
-  isSyncing: false
+  isSyncing: false,
+  currentTree: {} // Menyimpan data hasil kalkulasi terakhir
 }
 
 const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
@@ -270,7 +290,6 @@ function updateUI() {
   const allRows = state.reports.flatMap(r => r.rows);
   let tRev = 0, tS = 0, tSt = 0, tN = 0;
   
-  // tree[year][month] = { net, sellers: { name: { sComm, stComm } } }
   const tree = {};
 
   allRows.forEach(row => {
@@ -292,6 +311,8 @@ function updateUI() {
         mData.sellers[row.sellerRaw].stComm += stComm;
     }
   });
+
+  state.currentTree = tree; // Simpan untuk fungsi print
 
   document.getElementById('stat-rev').innerText = 'Rp ' + fmt(tRev);
   document.getElementById('stat-comm').innerText = 'Rp ' + fmt(Math.round(tS));
@@ -350,12 +371,73 @@ function renderRekap(tree) {
                                     </table>
                                 </div>
                             </div>
+                            <div class="print-actions">
+                                <button class="btn btn-outline btn-sm" onclick="printReport('${y}', '${m}', 'penjual')">🖨️ Cetak Laporan Penjual</button>
+                                <button class="btn btn-outline btn-sm" onclick="printReport('${y}', '${m}', 'pegawai')">🖨️ Cetak Laporan Pegawai</button>
+                            </div>
                         </div>
                     </div>`;
                 }).join('')}
             </div>
         </div>`;
   }).join('');
+}
+
+function printReport(year, monthIndex, type) {
+    const data = state.currentTree[year][monthIndex];
+    if(!data) return;
+
+    const monthName = monthNames[monthIndex];
+    const printArea = document.getElementById('print-area');
+    const sellers = Object.keys(data.sellers).sort();
+
+    let html = `
+        <div class="print-header">
+            <h2>LAPORAN KOMISI ${type.toUpperCase()}</h2>
+            <p>Periode: ${monthName} ${year}</p>
+        </div>
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Nama Penjual</th>
+                    <th style="text-align:right">Komisi (${type === 'penjual' ? 'Penjual' : 'Pegawai'})</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    let total = 0;
+    sellers.forEach((sn, index) => {
+        const val = type === 'penjual' ? data.sellers[sn].sComm : data.sellers[sn].stComm;
+        if(val > 0) {
+            total += val;
+            html += `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${sn}</td>
+                    <td style="text-align:right">Rp ${fmt(Math.round(val))}</td>
+                </tr>
+            `;
+        }
+    });
+
+    html += `
+            </tbody>
+            <tfoot>
+                <tr style="font-weight:bold; background:#f9f9f9">
+                    <td colspan="2" style="text-align:right">TOTAL</td>
+                    <td style="text-align:right">Rp ${fmt(Math.round(total))}</td>
+                </tr>
+            </tfoot>
+        </table>
+        <div class="print-footer">
+            <p>Dicetak pada: ${new Date().toLocaleString('id-ID')}</p>
+        </div>
+    `;
+
+    printArea.innerHTML = html;
+    window.print();
 }
 
 function switchTab(id) {
