@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MikMon Dashboard PRO</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--bg2:#161b27;--bg3:#1e2535;--surface:#242d3f;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --text:#e8ecf4;--text2:#8b95a8;--text3:#5a6478;
+  --accent:#3b82f6;--accent2:#60a5fa;
+  --green:#10b981;--amber:#f59e0b;--red:#ef4444;--purple:#a855f7;
+  --r:10px;--rs:6px;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5;min-height:100vh;overflow-x:hidden}
+.app{max-width:1240px;margin:0 auto;padding:24px;display:flex;flex-direction:column;gap:24px}
+header{display:flex;justify-content:space-between;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.logo{font-size:20px;font-weight:700;letter-spacing:-0.01em;display:flex;align-items:center;gap:10px}
+.logo span{background:var(--accent);color:#fff;padding:4px 8px;border-radius:6px;font-size:14px}
+.nav{display:flex;gap:4px;background:var(--bg2);padding:4px;border-radius:var(--r);border:1px solid var(--border)}
+.nav button{background:transparent;border:none;color:var(--text2);padding:8px 16px;border-radius:var(--rs);cursor:pointer;font-weight:500;font-size:13px;transition:0.2s}
+.nav button.active{background:var(--surface);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,0.2)}
+.nav button:hover:not(.active){background:rgba(255,255,255,0.03);color:var(--text)}
+
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:20px;height:fit-content;margin-bottom:20px}
+.panel h2{font-size:15px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+
+.btn{background:var(--accent);color:#fff;border:none;padding:10px 20px;border-radius:var(--rs);cursor:pointer;font-weight:500;font-size:13px;display:inline-flex;align-items:center;gap:8px;transition:0.2s}
+.btn:hover{background:var(--accent2);transform:translateY(-1px)}
+.btn-outline{background:transparent;border:1px solid var(--border2);color:var(--text2)}
+.btn-outline:hover{background:var(--surface);border-color:var(--accent);color:var(--text)}
+.btn-sm{padding:4px 10px;font-size:11px}
+.btn-danger{background:transparent;border:1px solid rgba(239,68,68,0.2);color:var(--red)}
+
+.grid-cols{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.input-group{margin-bottom:15px}
+.input-group label{display:block;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:6px}
+.input-main{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:var(--rs);width:100%;outline:none;font-size:13px}
+
+.table-wrap{overflow-x:auto; max-height:500px; border-radius:var(--rs); border:1px solid var(--border)}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px}
+thead{position:sticky;top:0;z-index:10;background:var(--bg3)}
+th{text-align:left;color:var(--text);font-weight:700;padding:10px 12px;border-bottom:2px solid var(--border);text-transform:uppercase;font-size:10px}
+td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
+
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:20px}
+.card h3{font-size:11px;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+.card .val{font-size:22px;font-weight:700}
+
+/* Rekap Styles */
+.rekap-container {display: flex; flex-direction: column; gap: 10px;}
+.seller-accordion {border: 1px solid var(--border); border-radius: var(--rs); background: var(--bg2); overflow: hidden;}
+.seller-trigger {
+  width: 100%; background: var(--bg3); border: none; padding: 12px 16px; 
+  display: flex; justify-content: space-between; align-items: center; 
+  cursor: pointer; transition: 0.2s; color: var(--text);
+}
+.seller-trigger:hover {background: var(--surface);}
+.seller-info-left {display: flex; align-items: center; gap: 12px;}
+.seller-name-label {font-size: 14px; font-weight: 700; color: var(--accent2);}
+.seller-count-badge {font-size: 10px; background: var(--bg2); color: var(--text3); padding: 2px 6px; border-radius: 4px;}
+
+.seller-content {display: none; padding: 0; background: var(--bg2); border-top: 1px solid var(--border);}
+.seller-accordion.active .seller-content {display: block;}
+
+.rekap-table-mini {width: 100%; border-collapse: collapse; font-size: 11px;}
+.rekap-table-mini th {background: rgba(255,255,255,0.01); color: var(--text3); font-size: 9px; padding: 8px 16px; text-align: left;}
+.rekap-table-mini td {padding: 10px 16px; border-bottom: 1px solid var(--border); color: var(--text2);}
+.popover-detail {font-size: 10px; color: var(--text3); display: block; margin-top: 2px;}
+
+.hidden{display:none}
+.master-list-item{display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);margin-bottom:8px}
+.badge{padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700}
+.badge-green{background:rgba(16,185,129,0.1);color:var(--green)}
+.badge-red{background:rgba(239,68,68,0.1);color:var(--red)}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div class="logo">MikMon <span>PRO</span></div>
+    <div class="nav">
+      <button id="nav-dashboard" class="active" onclick="switchTab('dashboard')">Dashboard</button>
+      <button id="nav-rekap" onclick="switchTab('rekap')">💰 Rekap Komisi</button>
+      <button id="nav-settings" onclick="switchTab('settings')">⚙️ Pengaturan</button>
+      <button id="nav-data" onclick="switchTab('data')">📊 Riwayat</button>
+      <button id="nav-import" onclick="switchTab('import')">📥 Import</button>
+    </div>
+    <button class="btn btn-outline btn-sm" onclick="clearAllData()">Reset Sistem</button>
+  </header>
+
+  <!-- DASHBOARD -->
+  <div id="tab-dashboard">
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px">
+      <div class="card"><h3>Total Penjualan</h3><div class="val" id="stat-rev">Rp 0</div></div>
+      <div class="card"><h3>Total Komisi Penjual</h3><div class="val" id="stat-comm" style="color:var(--green)">Rp 0</div></div>
+      <div class="card"><h3>Total Komisi Pegawai</h3><div class="val" id="stat-staff" style="color:var(--purple)">Rp 0</div></div>
+      <div class="card"><h3>Hasil Bersih Owner</h3><div class="val" id="stat-net" style="color:var(--accent2)">Rp 0</div></div>
+    </div>
+    <div class="panel" style="margin-top:20px">
+       <div style="height:320px"><canvas id="chartRevenue"></canvas></div>
+    </div>
+  </div>
+
+  <!-- REKAP KOMISI -->
+  <div id="tab-rekap" class="hidden">
+    <div class="panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+        <div>
+          <h2>💰 Rekap Komisi Penjual & Pegawai</h2>
+          <p style="font-size:11px; color:var(--text3)">Komisi dihitung berdasarkan nominal Rupiah tetap (Flat Rate).</p>
+        </div>
+      </div>
+      <div id="rekap-main-container" class="rekap-container">
+        <div class="empty-state">Data tidak tersedia.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PENGATURAN -->
+  <div id="tab-settings" class="hidden">
+    <div class="grid-cols">
+      <div class="panel">
+        <h2>🛠️ Master Data</h2>
+        <div class="input-group">
+          <label>Tambah Penjual</label>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="new-seller" class="input-main" placeholder="Nama Penjual">
+            <button class="btn" onclick="addMaster('sellers', 'new-seller')">+</button>
+          </div>
+        </div>
+        <div id="list-sellers"></div>
+        <div class="input-group" style="margin-top:20px">
+          <label>Tambah Tipe Paket</label>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="new-package" class="input-main" placeholder="Tipe Voucher">
+            <button class="btn" onclick="addMaster('packages', 'new-package')">+</button>
+          </div>
+        </div>
+        <div id="list-packages"></div>
+      </div>
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <h2>💸 Tarif Komisi (Rp)</h2>
+          <button class="btn btn-sm" onclick="saveCommissions()">Simpan</button>
+        </div>
+        <div id="commission-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DATA TAB -->
+  <div id="tab-data" class="hidden">
+    <div class="panel">
+      <h2>📊 Riwayat Lengkap</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Tanggal</th><th>Paket</th><th>Seller</th><th>Harga</th><th>Status</th></tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMPORT TAB -->
+  <div id="tab-import" class="hidden">
+    <div class="panel">
+      <div style="margin-bottom: 20px;">
+        <h2>📥 Auto Detect Folder</h2>
+        <p style="font-size: 12px; color: var(--text3); margin-top: 4px;">Pilih folder <b>DATA MASTER</b> untuk memproses semua file Excel di dalamnya secara otomatis.</p>
+      </div>
+      
+      <label class="btn" style="width:100%; justify-content:center; padding:60px; border:2px dashed var(--border); background:rgba(59, 130, 246, 0.05); cursor: pointer;">
+        📁 Pilih Folder DATA MASTER
+        <input type="file" id="folder-input" webkitdirectory mozdirectory directory style="display:none" onchange="handleFolderSelect(this.files)">
+      </label>
+
+      <div style="margin-top: 24px;">
+        <h3 style="font-size: 13px; margin-bottom: 12px; color: var(--text2)">Daftar File Aktif:</h3>
+        <div id="import-log">
+           <div class="empty-state">Belum ada file yang dimuat.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const state = {
+  master: { sellers: [], packages: [] },
+  commissions: {}, 
+  reports: [],
+  chart: null
+}
+
+window.onload = () => {
+  const sm = localStorage.getItem('mikmon_master_v3');
+  const sc = localStorage.getItem('mikmon_comm_v3');
+  const sr = localStorage.getItem('mikmon_reports_v3');
+  if(sm) state.master = JSON.parse(sm);
+  if(sc) state.commissions = JSON.parse(sc);
+  if(sr) state.reports = JSON.parse(sr);
+  runReMatching();
+  updateUI();
+}
+
+function switchTab(id) {
+  document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.add('hidden'));
+  document.getElementById('tab-' + id).classList.remove('hidden');
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('nav-' + id).classList.add('active');
+  if(id === 'settings') { renderMasterLists(); renderCommissionEditor(); }
+  if(id === 'rekap') renderRekap();
+}
+
+function runReMatching() {
+  state.reports.forEach(report => {
+    report.rows.forEach(row => {
+      row.isMatch = state.master.sellers.includes(row.sellerRaw) && state.master.packages.includes(row.pkgRaw);
+    });
+  });
+}
+
+function calculateRowCommission(row) {
+    const s = row.sellerRaw;
+    const p = row.pkgRaw;
+    const config = (state.commissions[s] && state.commissions[s][p]) 
+                   ? state.commissions[s][p] 
+                   : { seller: { value: 0 }, staff: { value: 0 } };
+
+    const sellerComm = config.seller.value || 0;
+    const staffComm = config.staff.value || 0;
+    const finalOwner = row.price - staffComm;
+
+    return { 
+        sellerComm, 
+        staffComm, 
+        finalOwner: Math.max(0, finalOwner)
+    };
+}
+
+function renderRekap() {
+  const container = document.getElementById('rekap-main-container');
+  const dataMap = {}; 
+
+  state.reports.forEach(report => {
+    report.rows.filter(r => r.isMatch).forEach(row => {
+      const s = row.sellerRaw;
+      const f = report.name;
+      const p = row.pkgRaw;
+      const { sellerComm, staffComm, finalOwner } = calculateRowCommission(row);
+
+      if (!dataMap[s]) dataMap[s] = { files: {}, totalS: 0, totalSt: 0, totalO: 0 };
+      if (!dataMap[s].files[f]) dataMap[s].files[f] = { items: {}, fS: 0, fSt: 0, fQty: 0, fO: 0 };
+      
+      if (!dataMap[s].files[f].items[p]) dataMap[s].files[f].items[p] = { qty: 0 };
+      dataMap[s].files[f].items[p].qty++;
+
+      dataMap[s].files[f].fS += sellerComm;
+      dataMap[s].files[f].fSt += staffComm;
+      dataMap[s].files[f].fO += finalOwner;
+      dataMap[s].files[f].fQty++;
+
+      dataMap[s].totalS += sellerComm;
+      dataMap[s].totalSt += staffComm;
+      dataMap[s].totalO += finalOwner;
+    });
+  });
+
+  const sellers = Object.keys(dataMap).sort();
+  if (!sellers.length) {
+    container.innerHTML = '<div class="empty-state">Belum ada data yang cocok.</div>';
+    return;
+  }
+
+  container.innerHTML = sellers.map(sName => {
+    const sData = dataMap[sName];
+    return `
+      <div class="seller-accordion">
+        <button class="seller-trigger" onclick="this.parentElement.classList.toggle('active')">
+          <div class="seller-info-left">
+            <span class="seller-name-label">👤 ${sName}</span>
+            <span class="seller-count-badge">${Object.keys(sData.files).length} File</span>
+          </div>
+          <div style="text-align:right">
+            <div style="color:var(--accent2); font-weight:800">Net Owner: Rp ${fmt(Math.round(sData.totalO))}</div>
+            <div style="font-size:9px; color:var(--green)">Rekap Komisi Penjual: Rp ${fmt(Math.round(sData.totalS))}</div>
+          </div>
+        </button>
+        <div class="seller-content">
+          <table class="rekap-table-mini">
+            <thead>
+              <tr>
+                <th>Nama File</th>
+                <th style="text-align:center">Qty</th>
+                <th style="text-align:right">Kom. Penjual (Rekap)</th>
+                <th style="text-align:right">Kom. Pegawai (Potong)</th>
+                <th style="text-align:right">Hasil Owner</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${Object.keys(sData.files).map(fName => {
+                const f = sData.files[fName];
+                return `
+                  <tr>
+                    <td>
+                      <div style="color:var(--text)">${fName}</div>
+                      <span class="popover-detail">${Object.keys(f.items).map(k=>`${k}: ${f.items[k].qty}`).join(' | ')}</span>
+                    </td>
+                    <td style="text-align:center">${f.fQty}</td>
+                    <td style="text-align:right; color:var(--text3)">Rp ${fmt(Math.round(f.fS))}</td>
+                    <td style="text-align:right; color:var(--purple)">Rp ${fmt(Math.round(f.fSt))}</td>
+                    <td style="text-align:right; color:var(--accent2); font-weight:600">Rp ${fmt(Math.round(f.fO))}</td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function updateUI() {
+  const allRows = state.reports.flatMap(r => r.rows);
+  const matchedRows = allRows.filter(r => r.isMatch);
+  
+  let totalRev = allRows.reduce((a,b)=>a+b.price, 0);
+  let totalS = 0, totalSt = 0, totalO = 0;
+
+  matchedRows.forEach(row => {
+    const { sellerComm, staffComm, finalOwner } = calculateRowCommission(row);
+    totalS += sellerComm; 
+    totalSt += staffComm; 
+    totalO += finalOwner;
+  });
+
+  if(document.getElementById('stat-rev')) document.getElementById('stat-rev').innerText = 'Rp ' + fmt(totalRev);
+  if(document.getElementById('stat-comm')) document.getElementById('stat-comm').innerText = 'Rp ' + fmt(Math.round(totalS));
+  if(document.getElementById('stat-staff')) document.getElementById('stat-staff').innerText = 'Rp ' + fmt(Math.round(totalSt));
+  if(document.getElementById('stat-net')) document.getElementById('stat-net').innerText = 'Rp ' + fmt(Math.round(totalO));
+
+  if(document.getElementById('table-body')) {
+      document.getElementById('table-body').innerHTML = allRows.map(r => `
+        <tr>
+          <td>${r.date || '-'}</td><td>${r.pkgRaw}</td><td>${r.sellerRaw}</td>
+          <td>Rp ${fmt(r.price)}</td><td><span class="badge ${r.isMatch ? 'badge-green' : 'badge-red'}">${r.isMatch ? 'OK' : 'MIS'}</span></td>
+        </tr>
+      `).join('') || '<tr><td colspan="5" class="empty-state">Kosong</td></tr>';
+  }
+  renderChart(state.reports); renderImportLog();
+}
+
+function addMaster(type, inputId) {
+  const val = document.getElementById(inputId).value.trim();
+  if(!val || state.master[type].includes(val)) return;
+  state.master[type].push(val); state.master[type].sort();
+  document.getElementById(inputId).value = '';
+  runReMatching(); saveData(); renderMasterLists(); renderCommissionEditor(); updateUI();
+}
+function removeMaster(type, val) {
+  if(!confirm(`Hapus ${val}?`)) return;
+  state.master[type] = state.master[type].filter(i => i !== val);
+  runReMatching(); saveData(); renderMasterLists(); renderCommissionEditor(); updateUI();
+}
+function renderMasterLists() {
+  ['sellers', 'packages'].forEach(type => {
+    const container = document.getElementById('list-' + type);
+    container.innerHTML = state.master[type].map(item => `
+      <div class="master-list-item"><span>${item}</span><button class="btn-danger btn-sm" onclick="removeMaster('${type}', '${item}')">X</button></div>
+    `).join('') || `<div class="empty-state">Kosong</div>`;
+  });
+}
+function renderCommissionEditor() {
+  const container = document.getElementById('commission-container');
+  if(!state.master.sellers.length || !state.master.packages.length) {
+    container.innerHTML = '<div class="empty-state">Isi Master Data dulu.</div>'; return;
+  }
+  container.innerHTML = state.master.sellers.map(s => `
+    <div style="background:var(--bg3); padding:12px; border-radius:var(--rs); margin-bottom:12px">
+      <div style="font-weight:800; border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:8px">Penjual: ${s}</div>
+      ${state.master.packages.map(p => {
+        const config = (state.commissions[s] && state.commissions[s][p]) ? state.commissions[s][p] : { seller: {value: 0}, staff: {value: 0} };
+        return `
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; align-items:center; margin-bottom:8px">
+            <div style="font-size:11px">${p}</div>
+            <div>
+              <div style="font-size:9px; color:var(--green)">Rp Kom. Penjual</div>
+              <input type="number" class="input-main c-val-s" data-s="${s}" data-p="${p}" value="${config.seller.value}" style="padding:4px; height:26px">
+            </div>
+            <div>
+              <div style="font-size:9px; color:var(--purple)">Rp Kom. Pegawai</div>
+              <input type="number" class="input-main c-val-st" data-s="${s}" data-p="${p}" value="${config.staff.value}" style="padding:4px; height:26px">
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `).join('');
+}
+
+function saveCommissions() {
+  const valsS = document.querySelectorAll('.c-val-s'), valsSt = document.querySelectorAll('.c-val-st');
+  valsS.forEach((el, i) => {
+    const s = el.dataset.s, p = el.dataset.p;
+    if(!state.commissions[s]) state.commissions[s] = {};
+    state.commissions[s][p] = { 
+        seller: { value: parseFloat(el.value) || 0 }, 
+        staff: { value: parseFloat(valsSt[i].value) || 0 } 
+    };
+  });
+  saveData(); alert('Tarif Berhasil Disimpan!'); updateUI();
+}
+
+/**
+ * AUTO DETECT FOLDER LOGIC
+ */
+async function handleFolderSelect(files) {
+    if (!files || files.length === 0) return;
+    
+    // Filter file yang berakhiran .xlsx atau .xls saja
+    const excelFiles = Array.from(files).filter(file => 
+        file.name.toLowerCase().endsWith('.xlsx') || 
+        file.name.toLowerCase().endsWith('.xls')
+    );
+
+    if (excelFiles.length === 0) {
+        alert('Tidak ditemukan file Excel di folder yang dipilih.');
+        return;
+    }
+
+    // Tampilkan loading sederhana (opsional)
+    const logContainer = document.getElementById('import-log');
+    logContainer.innerHTML = `<div class="empty-state">Sedang memproses ${excelFiles.length} file...</div>`;
+
+    for (const file of excelFiles) {
+        await processFile(file);
+    }
+
+    runReMatching();
+    saveData();
+    updateUI();
+    
+    // Auto switch ke dashboard setelah scan selesai
+    setTimeout(() => {
+        switchTab('dashboard');
+    }, 500);
+}
+
+function processFile(file) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const wb = XLSX.read(data, {type: 'array'});
+                const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                
+                const processed = raw.map(r => {
+                    let prof = String(r.Profile || r.Paket || '').trim();
+                    let dp = prof, ds = 'Admin';
+                    if(prof.includes('-')) { 
+                        let pts = prof.split('-'); 
+                        dp = pts[0].trim(); 
+                        ds = pts.slice(1).join('-').trim(); 
+                    }
+                    return { 
+                        date: typeof r.Date === 'number' ? fmtDate(r.Date) : r.Date, 
+                        sellerRaw: ds, 
+                        pkgRaw: dp, 
+                        price: parseFloat(r.Price || r.Harga || 0), 
+                        isMatch: false 
+                    }
+                });
+
+                // Cek jika file dengan nama yang sama sudah ada, hapus dulu agar terupdate
+                state.reports = state.reports.filter(r => r.name !== file.name);
+                
+                state.reports.push({ 
+                    id: Date.now() + Math.random(), 
+                    name: file.name, 
+                    rows: processed 
+                });
+            } catch (err) {
+                console.error("Gagal membaca file: " + file.name, err);
+            }
+            resolve();
+        };
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+function renderImportLog() {
+  const container = document.getElementById('import-log');
+  if (state.reports.length === 0) {
+      container.innerHTML = '<div class="empty-state">Belum ada file yang dimuat.</div>';
+      return;
+  }
+  container.innerHTML = state.reports.map(r => `
+    <div class="master-list-item">
+      <div>
+        <span style="font-weight: 600; color: var(--accent2)">📄 ${r.name}</span>
+        <span style="font-size: 10px; color: var(--text3); margin-left: 10px;">(${r.rows.length} Baris)</span>
+      </div>
+      <button class="btn-danger btn-sm" onclick="deleteReport(${r.id})">Hapus</button>
+    </div>
+  `).join('');
+}
+
+function deleteReport(id) { 
+    state.reports = state.reports.filter(r => r.id !== id); 
+    saveData(); 
+    updateUI(); 
+}
+
+function saveData() {
+  localStorage.setItem('mikmon_master_v3', JSON.stringify(state.master));
+  localStorage.setItem('mikmon_comm_v3', JSON.stringify(state.commissions));
+  localStorage.setItem('mikmon_reports_v3', JSON.stringify(state.reports));
+}
+
+function renderChart(reports) {
+  const canvas = document.getElementById('chartRevenue'); if(!canvas || !reports.length) return;
+  const ctx = canvas.getContext('2d'); if(state.chart) state.chart.destroy();
+  state.chart = new Chart(ctx, { type: 'line', data: { labels: reports.map(r => r.name.substring(0,12)), datasets: [{ label: 'Hasil Bersih Owner', data: reports.map(r => r.rows.reduce((acc, row) => acc + calculateRowCommission(row).finalOwner, 0)), borderColor: '#60a5fa', backgroundColor: 'rgba(96, 165, 250, 0.1)', fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } } });
+}
+
+function clearAllData() { if(confirm('Hapus semua?')) { localStorage.clear(); location.reload(); } }
+function fmt(n) { return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
+function fmtDate(s) { const d = new Date((s - 25569) * 86400 * 1000); return `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`; }
+</script>
+</body>
+</html>
