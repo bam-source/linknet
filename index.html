@@ -95,10 +95,6 @@ header{display:flex;justify-content:space-between;align-items:center;gap:16px;pa
 .insight-kicker{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
 .insight-item strong{display:block;font-size:15px;margin-bottom:6px}
 .insight-item span{font-size:12px;color:#b3bdd2;line-height:1.6}
-.modal-note{font-size:12px;color:var(--text2);line-height:1.6;padding:12px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px}
-.offline-tools{display:flex;flex-direction:column;gap:10px}
-.offline-tools input{display:none}
-.offline-status{font-size:12px;color:var(--text3)}
 .table-wrap{overflow-x:auto;max-height:560px;border-radius:var(--rs);border:1px solid var(--border)}
 table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px}
 th{text-align:left;color:var(--text);font-weight:700;padding:10px 12px;border-bottom:2px solid var(--border);background:var(--bg3);position:sticky;top:0;z-index:1}
@@ -280,14 +276,6 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
              onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <div id="login-err" class="modal-err">Username atau password salah</div>
-    <div class="modal-note">
-      Saat dibuka offline lokal, pilih file <code>admin-users.json</code> sekali agar akun admin bisa tetap digunakan.
-    </div>
-    <div class="offline-tools">
-      <button class="btn btn-outline" type="button" onclick="triggerOfflineImport()">Impor admin-users.json</button>
-      <input id="offline-admin-file" type="file" accept=".json,application/json" onchange="importOfflineAdminFile(event)">
-      <div id="offline-status" class="offline-status">Menunggu file akun atau pemuatan otomatis dari server.</div>
-    </div>
     <div class="modal-row">
       <button class="btn" style="flex:1" onclick="doLogin()">Masuk</button>
       <button class="btn btn-outline" onclick="closeModal()">Batal</button>
@@ -483,7 +471,6 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
 // ─── CREDENTIALS ─────────────────────────────────────────────────────────────
 const ADMIN_FILE = './admin-users.json';
 const AUTH_KEY = 'lk_admin_session';
-const ADMIN_CACHE_KEY = 'lk_admin_users_cache';
 let adminUsers = [];
 
 async function loadAdminUsers() {
@@ -491,44 +478,12 @@ async function loadAdminUsers() {
     const res = await fetch(`${ADMIN_FILE}?v=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) throw new Error('Gagal memuat admin-users.json');
     const data = await res.json();
-    adminUsers = normalizeAdminUsers(data);
-    saveAdminCache(adminUsers);
-    setOfflineStatus('Akun admin berhasil dimuat otomatis dari file JSON.', 'var(--green)');
+    adminUsers = Array.isArray(data) ? data.filter(u => u && u.username && u.password) : [];
   } catch (e) {
     console.error(e);
-    adminUsers = loadAdminCache();
-    setOfflineStatus(
-      adminUsers.length
-        ? 'Mode offline aktif memakai akun admin yang tersimpan di browser ini.'
-        : 'File akun belum bisa dimuat otomatis. Impor admin-users.json untuk mode offline.',
-      adminUsers.length ? 'var(--amber)' : 'var(--text3)'
-    );
+    adminUsers = [];
   }
   return adminUsers;
-}
-
-function normalizeAdminUsers(data) {
-  return Array.isArray(data) ? data.filter(u => u && u.username && u.password) : [];
-}
-
-function saveAdminCache(users) {
-  localStorage.setItem(ADMIN_CACHE_KEY, JSON.stringify(users));
-}
-
-function loadAdminCache() {
-  try {
-    const raw = localStorage.getItem(ADMIN_CACHE_KEY);
-    return raw ? normalizeAdminUsers(JSON.parse(raw)) : [];
-  } catch (e) {
-    return [];
-  }
-}
-
-function setOfflineStatus(message, color) {
-  const el = document.getElementById('offline-status');
-  if (!el) return;
-  el.textContent = message;
-  el.style.color = color || 'var(--text3)';
 }
 
 function getSavedSession() {
@@ -576,41 +531,9 @@ function openModal() {
   document.getElementById('login-user').value = '';
   document.getElementById('login-pass').value = '';
   document.getElementById('login-err').style.display = 'none';
-  setOfflineStatus(
-    adminUsers.length
-      ? 'Akun admin siap dipakai. Anda bisa login sekarang.'
-      : 'Belum ada akun admin yang tersedia. Impor admin-users.json untuk mode offline.',
-    adminUsers.length ? 'var(--green)' : 'var(--amber)'
-  );
   setTimeout(() => document.getElementById('login-user').focus(), 60);
 }
 function closeModal() { document.getElementById('login-modal').classList.add('hidden'); }
-
-function triggerOfflineImport() {
-  document.getElementById('offline-admin-file')?.click();
-}
-
-function importOfflineAdminFile(event) {
-  const file = event.target.files && event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      const parsed = JSON.parse(String(reader.result || '[]'));
-      const users = normalizeAdminUsers(parsed);
-      if (!users.length) throw new Error('Format akun tidak valid');
-      adminUsers = users;
-      saveAdminCache(users);
-      setOfflineStatus(`Berhasil memuat ${users.length} akun admin untuk mode offline.`, 'var(--green)');
-      document.getElementById('login-err').style.display = 'none';
-    } catch (e) {
-      setOfflineStatus('Gagal membaca file admin-users.json. Periksa format JSON-nya.', 'var(--red)');
-    } finally {
-      event.target.value = '';
-    }
-  };
-  reader.readAsText(file);
-}
 
 function doLogin() {
   const u = document.getElementById('login-user').value.trim();
