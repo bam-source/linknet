@@ -866,31 +866,26 @@ function renderRekap(tree){
       <div class="year-header"><h4>Tahun ${y}</h4></div>
       <div class="monthly-list">${months.map(m=>{
         const d=tree[y][m], sn=Object.keys(d.sellers).sort();
-        const maxCombined=sn.reduce((mx,n)=>Math.max(mx,(d.sellers[n].sComm||0)+(d.sellers[n].stComm||0)),0);
-        const visualRows=sn.length
-          ? sn.map(n=>{
-              const sellerAmt=d.sellers[n].sComm||0;
-              const staffAmt=d.sellers[n].stComm||0;
-              const combined=sellerAmt+staffAmt;
-              const totalPct=maxCombined?Math.max(10,(combined/maxCombined)*100):0;
-              const sellerShare=combined?(sellerAmt/combined)*100:0;
-              const staffShare=combined?(staffAmt/combined)*100:0;
-              return `<div class="seller-bar-row">
-                <div class="seller-bar-name">${maskedName(n)}</div>
-                <div>
-                  <div class="seller-bar-stack" style="width:${totalPct}%">
-                    <span class="seller-bar-seg seller-bar-seller" style="width:${sellerShare}%"></span>
-                    <span class="seller-bar-seg seller-bar-staff" style="width:${staffShare}%"></span>
-                  </div>
-                  <div class="seller-bar-meta">
-                    <span class="seller-amt">Penjual: <b>${masked('Rp '+fmt(Math.round(sellerAmt)))}</b></span>
-                    <span class="staff-amt">Staff: <b>${masked('Rp '+fmt(Math.round(staffAmt)))}</b></span>
-                    <span>Total: <b>${masked('Rp '+fmt(Math.round(combined)))}</b></span>
-                  </div>
-                </div>
-              </div>`;
-            }).join('')
-          : `<div class="seller-bar-empty">Belum ada pembagian hasil yang bisa divisualkan pada periode ini.</div>`;
+        const monthCards=sn
+          .map(n=>({name:n,sellerAmt:d.sellers[n].sComm||0,staffAmt:d.sellers[n].stComm||0}))
+          .map(item=>({...item,combined:item.sellerAmt+item.staffAmt}))
+          .sort((a,b)=>b.combined-a.combined)
+          .slice(0,3)
+          .map(item=>{
+            const sellerShare=item.combined?(item.sellerAmt/item.combined)*100:0;
+            const staffShare=item.combined?(item.staffAmt/item.combined)*100:0;
+            return `<div class="month-mini-card">
+              <strong>${maskedName(item.name)}</strong>
+              <div class="month-mini-bar">
+                <span class="seller" style="width:${sellerShare}%"></span>
+                <span class="staff" style="width:${staffShare}%"></span>
+              </div>
+              <div class="month-mini-meta">
+                <span class="seller-amt">P: <b>${masked('Rp '+fmt(Math.round(item.sellerAmt)))}</b></span>
+                <span class="staff-amt">S: <b>${masked('Rp '+fmt(Math.round(item.staffAmt)))}</b></span>
+              </div>
+            </div>`;
+          }).join('');
         return`<div class="month-row">
           <button class="month-trigger" onclick="this.parentElement.classList.toggle('active')">
             <div class="month-title">
@@ -903,6 +898,7 @@ function renderRekap(tree){
             </div>
             <span style="font-size:10px;color:var(--text3)">DETAIL ▾</span>
           </button>
+          ${monthCards ? `<div class="month-mini-strip">${monthCards}</div>` : ''}
           <div class="month-details">
             <div class="detail-grid">
               <div><table class="detail-table">
@@ -913,13 +909,6 @@ function renderRekap(tree){
                 <thead><tr><th style="text-align:left">Penjual</th><th style="text-align:right">Staff</th></tr></thead>
                 <tbody>${sn.map(n=>`<tr><td>${maskedName(n)}</td><td style="text-align:right;color:var(--purple)">${masked('Rp '+fmt(Math.round(d.sellers[n].stComm)))}</td></tr>`).join('')}</tbody>
               </table></div>
-              <div class="detail-visual">
-                <div class="detail-visual-head">
-                  <h5>Diagram Penjual dan Staff</h5>
-                  <span>Visual gabungan per penjual pada periode ${MN[m]} ${y}</span>
-                </div>
-                <div class="seller-bars">${visualRows}</div>
-              </div>
             </div>
             ${isAdmin
               ? `<div class="print-actions"><div class="seller-print-group"><p>CETAK LAPORAN PENJUAL:</p><div style="display:flex;flex-wrap:wrap;gap:8px">${sn.map(n=>`<button class="btn btn-outline btn-sm" onclick="printSeller('${y}','${m}','${n}')">👤 ${n}</button>`).join('')}</div></div><button class="btn btn-outline btn-sm" style="background:var(--bg3)" onclick="printStaff('${y}','${m}')">👔 Cetak Rekap Pegawai</button></div>`
