@@ -13,16 +13,21 @@
   --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
   --text:#e8ecf4;--text2:#8b95a8;--text3:#5a6478;
   --accent:#3b82f6;--accent2:#60a5fa;
+  --cyan:#22d3ee;--rose:#fb7185;
   --green:#10b981;--amber:#f59e0b;--red:#ef4444;--purple:#a855f7;
   --r:10px;--rs:6px;
 }
-body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.5;min-height:100vh;overflow-x:hidden}
+body{background:
+  radial-gradient(circle at top left, rgba(34,211,238,0.13), transparent 28%),
+  radial-gradient(circle at top right, rgba(59,130,246,0.16), transparent 24%),
+  linear-gradient(180deg, #0a0d14 0%, #0f1117 42%, #121826 100%);
+color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.5;min-height:100vh;overflow-x:hidden}
 .app{max-width:1240px;margin:0 auto;padding:24px;display:flex;flex-direction:column;gap:24px}
-header{display:flex;justify-content:space-between;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--border)}
+header{display:flex;justify-content:space-between;align-items:center;gap:16px;padding-bottom:12px;border-bottom:1px solid var(--border)}
 .logo{font-size:20px;font-weight:700;display:flex;align-items:center;gap:10px}
 .logo span{background:var(--accent);color:#fff;padding:4px 8px;border-radius:6px;font-size:14px}
-.nav{display:flex;gap:4px;background:var(--bg2);padding:4px;border-radius:var(--r);border:1px solid var(--border)}
-.nav button{background:transparent;border:none;color:var(--text2);padding:8px 16px;border-radius:var(--rs);cursor:pointer;font-weight:500;font-size:13px;transition:0.2s}
+.nav{display:flex;gap:4px;flex-wrap:wrap;background:var(--bg2);padding:4px;border-radius:var(--r);border:1px solid var(--border)}
+.nav button{background:transparent;border:none;color:var(--text2);padding:8px 16px;border-radius:var(--rs);cursor:pointer;font-weight:500;font-size:13px;transition:0.2s;white-space:nowrap}
 .nav button.active{background:var(--surface);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,0.2)}
 .nav button:hover:not(.active){background:rgba(255,255,255,0.03);color:var(--text)}
 .panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:20px}
@@ -36,6 +41,64 @@ header{display:flex;justify-content:space-between;align-items:center;padding-bot
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:20px}
 .card h3{font-size:11px;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
 .card .val{font-size:22px;font-weight:700}
+.hero-panel{position:relative;overflow:hidden;padding:28px;border-radius:24px;background:
+  linear-gradient(135deg, rgba(14,165,233,0.18), rgba(59,130,246,0.08) 34%, rgba(168,85,247,0.12) 100%),
+  rgba(15,23,42,0.9);
+  border:1px solid rgba(255,255,255,0.08);
+  box-shadow:0 30px 80px rgba(0,0,0,0.32)}
+.hero-panel::before{content:'';position:absolute;inset:auto -10% -45% auto;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle, rgba(96,165,250,0.28), transparent 70%)}
+.hero-grid{position:relative;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,0.9fr);gap:22px;align-items:stretch}
+.hero-copy{display:flex;flex-direction:column;gap:16px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;width:max-content;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent2)}
+.hero-title{font-size:clamp(28px,4vw,42px);line-height:1.06;font-weight:800;max-width:10ch}
+.hero-title span{display:block;color:#9bd4ff}
+.hero-sub{max-width:58ch;color:#b8c2d9;font-size:14px}
+.hero-actions{display:flex;gap:10px;flex-wrap:wrap}
+.hero-actions .btn{min-height:40px}
+.hero-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.hero-chip{padding:12px 14px;border-radius:16px;background:rgba(7,12,22,0.38);border:1px solid rgba(255,255,255,0.06)}
+.hero-chip span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:4px}
+.hero-chip strong{font-size:15px}
+.hero-side{display:flex;flex-direction:column;gap:12px}
+.spotlight-card{padding:18px;border-radius:20px;background:linear-gradient(180deg, rgba(9,14,24,0.88), rgba(19,28,43,0.72));border:1px solid rgba(255,255,255,0.08);min-height:100%}
+.spotlight-card h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:12px}
+.spotlight-main{font-size:30px;font-weight:800;line-height:1}
+.spotlight-label{margin-top:8px;color:#b8c2d9;font-size:13px}
+.mini-trend{margin-top:18px;display:flex;flex-direction:column;gap:10px}
+.mini-trend-row{display:grid;grid-template-columns:96px 1fr auto;gap:10px;align-items:center;font-size:12px}
+.mini-trend-row span{color:var(--text2)}
+.mini-bar{height:8px;border-radius:999px;background:rgba(255,255,255,0.07);overflow:hidden}
+.mini-bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg, var(--cyan), var(--accent2))}
+.dashboard-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:18px}
+.metric-card{grid-column:span 3;position:relative;overflow:hidden;padding:20px 18px;border-radius:22px;background:linear-gradient(180deg, rgba(17,24,39,0.96), rgba(21,31,48,0.9));border:1px solid rgba(255,255,255,0.07);box-shadow:0 14px 34px rgba(0,0,0,0.22)}
+.metric-card::after{content:'';position:absolute;top:-40px;right:-30px;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle, var(--metric-glow), transparent 70%);opacity:.28}
+.metric-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.metric-card h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:10px}
+.metric-card .val{font-size:28px;font-weight:800;letter-spacing:-0.03em}
+.metric-note{margin-top:10px;font-size:12px;color:#b3bdd2}
+.metric-icon{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);font-size:18px}
+.metric-revenue{--metric-glow:rgba(96,165,250,0.9)}
+.metric-seller{--metric-glow:rgba(16,185,129,0.9)}
+.metric-staff{--metric-glow:rgba(168,85,247,0.9)}
+.metric-net{--metric-glow:rgba(34,211,238,0.9)}
+.chart-panel{grid-column:span 8;margin-bottom:0;border-radius:24px;background:linear-gradient(180deg, rgba(16,22,34,0.96), rgba(20,28,43,0.88))}
+.chart-panel h2,.insight-panel h2{margin-bottom:4px}
+.panel-sub{font-size:12px;color:var(--text3);margin-bottom:16px}
+.chart-shell{height:310px}
+.chart-frame{position:relative;height:100%;padding:14px 14px 10px;border-radius:22px;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.05)}
+.chart-overlay-label{position:absolute;left:22px;top:18px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:rgba(232,236,244,0.5);pointer-events:none}
+.chart-footer-note{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:11px;color:var(--text3);gap:12px;flex-wrap:wrap}
+.chart-legend-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg, var(--cyan), var(--accent2));margin-right:8px;box-shadow:0 0 14px rgba(34,211,238,0.35)}
+.insight-panel{grid-column:span 4;margin-bottom:0;border-radius:24px;background:linear-gradient(180deg, rgba(17,24,39,0.96), rgba(21,31,48,0.88))}
+.insight-list{display:flex;flex-direction:column;gap:12px}
+.insight-item{padding:14px 16px;border-radius:18px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06)}
+.insight-kicker{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+.insight-item strong{display:block;font-size:15px;margin-bottom:6px}
+.insight-item span{font-size:12px;color:#b3bdd2;line-height:1.6}
+.modal-note{font-size:12px;color:var(--text2);line-height:1.6;padding:12px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px}
+.offline-tools{display:flex;flex-direction:column;gap:10px}
+.offline-tools input{display:none}
+.offline-status{font-size:12px;color:var(--text3)}
 .table-wrap{overflow-x:auto;max-height:560px;border-radius:var(--rs);border:1px solid var(--border)}
 table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px}
 th{text-align:left;color:var(--text);font-weight:700;padding:10px 12px;border-bottom:2px solid var(--border);background:var(--bg3);position:sticky;top:0;z-index:1}
@@ -112,6 +175,66 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
 .notice-amber{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);color:var(--amber)}
 .notice-green{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);color:var(--green)}
 
+@media (max-width:980px){
+  .app{padding:20px}
+  header{flex-wrap:wrap;align-items:flex-start}
+  header > div:last-child{width:100%;justify-content:space-between}
+  .nav{width:100%}
+  .hero-grid{grid-template-columns:1fr}
+  .hero-panel{padding:24px}
+  .metric-card{grid-column:span 6}
+  .chart-panel,.insight-panel{grid-column:span 12}
+  .detail-grid{grid-template-columns:1fr}
+  .month-trigger{align-items:flex-start;gap:12px}
+  .month-title{flex-direction:column;align-items:flex-start;gap:8px}
+  .month-summary{flex-wrap:wrap;gap:10px}
+}
+
+@media (max-width:640px){
+  .app{padding:18px}
+  header{flex-direction:column;align-items:stretch;gap:14px}
+  header > div:last-child{width:100%;flex-wrap:wrap}
+  .logo{font-size:18px}
+  .logo span{font-size:12px}
+  .nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+  .nav button{padding:10px 12px;text-align:center}
+  .btn{width:100%;justify-content:center}
+  .btn-sm{width:auto}
+  .auth-badge{width:100%;justify-content:center}
+  .notice{align-items:flex-start;flex-direction:column}
+  .hero-panel{padding:20px;border-radius:20px}
+  .eyebrow{font-size:10px}
+  .hero-title{font-size:clamp(24px,8vw,32px);max-width:none}
+  .hero-sub{font-size:13px}
+  .hero-actions{flex-direction:column}
+  .hero-actions .btn{width:100%}
+  .hero-meta{grid-template-columns:1fr}
+  .hero-chip{padding:11px 12px}
+  .spotlight-card{padding:16px}
+  .spotlight-main{font-size:24px}
+  .mini-trend-row{grid-template-columns:72px 1fr auto;font-size:11px}
+  .metric-card{grid-column:span 12}
+  .metric-card{padding:18px 16px;border-radius:18px}
+  .metric-card .val{font-size:24px}
+  .metric-icon{width:38px;height:38px;font-size:14px}
+  .panel{padding:16px}
+  .panel h2{font-size:14px}
+  .chart-shell{height:260px}
+  .chart-frame{padding:10px 10px 8px;border-radius:18px}
+  .chart-overlay-label{left:16px;top:14px;font-size:10px}
+  .modal-box{width:min(360px,calc(100vw - 32px));padding:24px}
+  .chart-footer-note{flex-direction:column;align-items:flex-start}
+  .filter-bar{flex-direction:column;align-items:stretch}
+  .ff,.ff select{width:100%}
+  .pagination{align-items:flex-start}
+  .pbtns{width:100%}
+  .table-wrap{max-height:none}
+  th,td{padding:9px 10px;font-size:11px}
+  .year-header{padding:12px 14px}
+  .month-trigger,.month-details{padding:14px}
+  .print-actions{flex-direction:column}
+}
+
 /* PRINT */
 @media print{
   body *{visibility:hidden}
@@ -144,7 +267,7 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
 <!-- LOGIN MODAL -->
 <div id="login-modal" class="modal-overlay hidden">
   <div class="modal-box">
-    <div class="modal-title">🔐 Login Admin</div>
+    <div class="modal-title">Login Admin</div>
     <div class="modal-sub">Masukkan kredensial untuk akses penuh</div>
     <div class="mfield">
       <label>Username</label>
@@ -156,7 +279,15 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
       <input id="login-pass" type="password" placeholder="Password" autocomplete="current-password"
              onkeydown="if(event.key==='Enter')doLogin()">
     </div>
-    <div id="login-err" class="modal-err">❌ Username atau password salah</div>
+    <div id="login-err" class="modal-err">Username atau password salah</div>
+    <div class="modal-note">
+      Saat dibuka offline lokal, pilih file <code>admin-users.json</code> sekali agar akun admin bisa tetap digunakan.
+    </div>
+    <div class="offline-tools">
+      <button class="btn btn-outline" type="button" onclick="triggerOfflineImport()">Impor admin-users.json</button>
+      <input id="offline-admin-file" type="file" accept=".json,application/json" onchange="importOfflineAdminFile(event)">
+      <div id="offline-status" class="offline-status">Menunggu file akun atau pemuatan otomatis dari server.</div>
+    </div>
     <div class="modal-row">
       <button class="btn" style="flex:1" onclick="doLogin()">Masuk</button>
       <button class="btn btn-outline" onclick="closeModal()">Batal</button>
@@ -182,21 +313,86 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
     </div>
   </header>
 
-  <!-- DASHBOARD -->
+    <!-- DASHBOARD -->
   <div id="tab-dashboard" class="no-print">
     <div id="public-notice" class="notice notice-amber">
-      🔒 Mode <b>Publik</b> — semua angka & nama penjual disensor.
+      Mode <b>Publik</b> - semua angka & nama penjual disensor.
       <span style="cursor:pointer;text-decoration:underline;margin-left:4px" onclick="handleAuthClick()">Login Admin</span>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px">
-      <div class="card"><h3>Revenue (Total)</h3><div class="val" id="stat-rev">—</div></div>
-      <div class="card"><h3>Komisi Penjual</h3><div class="val" id="stat-comm" style="color:var(--green)">—</div></div>
-      <div class="card"><h3>Komisi Pegawai</h3><div class="val" id="stat-staff" style="color:var(--purple)">—</div></div>
-      <div class="card"><h3>Net Owner (Total)</h3><div class="val" id="stat-net" style="color:var(--accent2)">—</div></div>
+    <div class="hero-panel">
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <div class="eyebrow">Performance Console</div>
+          <div class="hero-title">Dashboard Komisi <span>LINK.NET</span></div>
+          <div class="hero-sub">Pantau revenue, pembagian komisi, dan performa bulanan dalam tampilan yang lebih modern, fokus, dan enak dipakai sehari-hari.</div>
+          <div class="hero-actions">
+            <button class="btn btn-refresh" onclick="syncFromGitHub()">Refresh Data</button>
+            <button class="btn btn-outline" onclick="switchTab('rekap')">Lihat Rekap</button>
+          </div>
+          <div class="hero-meta">
+            <div class="hero-chip"><span>Status Akses</span><strong id="hero-access">Publik</strong></div>
+            <div class="hero-chip"><span>Total Laporan</span><strong id="hero-report-count">0 File</strong></div>
+            <div class="hero-chip"><span>Periode Aktif</span><strong id="hero-period">Belum ada data</strong></div>
+          </div>
+        </div>
+        <div class="hero-side">
+          <div class="spotlight-card">
+            <h3>Highlight</h3>
+            <div class="spotlight-main" id="spotlight-value">-</div>
+            <div class="spotlight-label" id="spotlight-label">Belum ada data transaksi.</div>
+            <div class="mini-trend" id="mini-trend">
+              <div class="mini-trend-row">
+                <span>Menunggu data</span>
+                <div class="mini-bar"><i style="width:0%"></i></div>
+                <strong>0%</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="panel" style="margin-top:20px">
-      <h2>📈 Tren Performa Bulanan</h2>
-      <div style="height:250px"><canvas id="chartRevenue"></canvas></div>
+    <div class="dashboard-grid" style="margin-top:20px">
+      <div class="metric-card metric-revenue">
+        <div class="metric-top"><div><h3>Revenue (Total)</h3><div class="val" id="stat-rev">-</div></div><div class="metric-icon">RP</div></div>
+        <div class="metric-note">Total nilai transaksi dari seluruh laporan yang sudah berhasil dibaca.</div>
+      </div>
+      <div class="metric-card metric-seller">
+        <div class="metric-top"><div><h3>Komisi Penjual</h3><div class="val" id="stat-comm" style="color:var(--green)">-</div></div><div class="metric-icon">AG</div></div>
+        <div class="metric-note">Akumulasi komisi yang dialokasikan untuk agen atau penjual.</div>
+      </div>
+      <div class="metric-card metric-staff">
+        <div class="metric-top"><div><h3>Komisi Pegawai</h3><div class="val" id="stat-staff" style="color:var(--purple)">-</div></div><div class="metric-icon">ST</div></div>
+        <div class="metric-note">Total alokasi komisi internal untuk pegawai dan operasional.</div>
+      </div>
+      <div class="metric-card metric-net">
+        <div class="metric-top"><div><h3>Net Owner (Total)</h3><div class="val" id="stat-net" style="color:var(--accent2)">-</div></div><div class="metric-icon">NT</div></div>
+        <div class="metric-note">Ringkasan nilai net owner berdasarkan konfigurasi komisi saat ini.</div>
+      </div>
+      <div class="panel chart-panel">
+        <h2>Tren Performa Bulanan</h2>
+        <div class="panel-sub">Arah performa divisualkan sebagai gelombang tren agar lebih fokus ke ritme naik turunnya hasil.</div>
+        <div class="chart-shell">
+          <div class="chart-frame">
+            <div class="chart-overlay-label">Visual Trend</div>
+            <canvas id="chartRevenue"></canvas>
+          </div>
+        </div>
+        <div class="chart-footer-note">
+          <div><span class="chart-legend-dot"></span>Kurva menunjukkan karakter performa tiap periode, tanpa menampilkan nominal.</div>
+          <div id="chart-mood">Belum ada data tren.</div>
+        </div>
+      </div>
+      <div class="panel insight-panel">
+        <h2>Insight Cepat</h2>
+        <div class="panel-sub">Highlight performa terkini yang bisa dipantau sekilas.</div>
+        <div id="insight-list" class="insight-list">
+          <div class="insight-item">
+            <div class="insight-kicker">Ringkasan</div>
+            <strong>Insight akan muncul setelah data dimuat</strong>
+            <span>Sync data lebih dulu untuk melihat rangkuman otomatis dari seluruh laporan yang tersedia.</span>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -287,6 +483,7 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
 // ─── CREDENTIALS ─────────────────────────────────────────────────────────────
 const ADMIN_FILE = './admin-users.json';
 const AUTH_KEY = 'lk_admin_session';
+const ADMIN_CACHE_KEY = 'lk_admin_users_cache';
 let adminUsers = [];
 
 async function loadAdminUsers() {
@@ -294,12 +491,44 @@ async function loadAdminUsers() {
     const res = await fetch(`${ADMIN_FILE}?v=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) throw new Error('Gagal memuat admin-users.json');
     const data = await res.json();
-    adminUsers = Array.isArray(data) ? data.filter(u => u && u.username && u.password) : [];
+    adminUsers = normalizeAdminUsers(data);
+    saveAdminCache(adminUsers);
+    setOfflineStatus('Akun admin berhasil dimuat otomatis dari file JSON.', 'var(--green)');
   } catch (e) {
     console.error(e);
-    adminUsers = [];
+    adminUsers = loadAdminCache();
+    setOfflineStatus(
+      adminUsers.length
+        ? 'Mode offline aktif memakai akun admin yang tersimpan di browser ini.'
+        : 'File akun belum bisa dimuat otomatis. Impor admin-users.json untuk mode offline.',
+      adminUsers.length ? 'var(--amber)' : 'var(--text3)'
+    );
   }
   return adminUsers;
+}
+
+function normalizeAdminUsers(data) {
+  return Array.isArray(data) ? data.filter(u => u && u.username && u.password) : [];
+}
+
+function saveAdminCache(users) {
+  localStorage.setItem(ADMIN_CACHE_KEY, JSON.stringify(users));
+}
+
+function loadAdminCache() {
+  try {
+    const raw = localStorage.getItem(ADMIN_CACHE_KEY);
+    return raw ? normalizeAdminUsers(JSON.parse(raw)) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function setOfflineStatus(message, color) {
+  const el = document.getElementById('offline-status');
+  if (!el) return;
+  el.textContent = message;
+  el.style.color = color || 'var(--text3)';
 }
 
 function getSavedSession() {
@@ -347,9 +576,41 @@ function openModal() {
   document.getElementById('login-user').value = '';
   document.getElementById('login-pass').value = '';
   document.getElementById('login-err').style.display = 'none';
+  setOfflineStatus(
+    adminUsers.length
+      ? 'Akun admin siap dipakai. Anda bisa login sekarang.'
+      : 'Belum ada akun admin yang tersedia. Impor admin-users.json untuk mode offline.',
+    adminUsers.length ? 'var(--green)' : 'var(--amber)'
+  );
   setTimeout(() => document.getElementById('login-user').focus(), 60);
 }
 function closeModal() { document.getElementById('login-modal').classList.add('hidden'); }
+
+function triggerOfflineImport() {
+  document.getElementById('offline-admin-file')?.click();
+}
+
+function importOfflineAdminFile(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(String(reader.result || '[]'));
+      const users = normalizeAdminUsers(parsed);
+      if (!users.length) throw new Error('Format akun tidak valid');
+      adminUsers = users;
+      saveAdminCache(users);
+      setOfflineStatus(`Berhasil memuat ${users.length} akun admin untuk mode offline.`, 'var(--green)');
+      document.getElementById('login-err').style.display = 'none';
+    } catch (e) {
+      setOfflineStatus('Gagal membaca file admin-users.json. Periksa format JSON-nya.', 'var(--red)');
+    } finally {
+      event.target.value = '';
+    }
+  };
+  reader.readAsText(file);
+}
 
 function doLogin() {
   const u = document.getElementById('login-user').value.trim();
@@ -497,11 +758,97 @@ function updateUI(){
   document.getElementById('stat-comm').innerHTML  = masked('Rp '+fmt(Math.round(tS)));
   document.getElementById('stat-staff').innerHTML = masked('Rp '+fmt(Math.round(tSt)));
   document.getElementById('stat-net').innerHTML   = masked('Rp '+fmt(Math.round(tN)));
+  updateDashboardHero(all, tRev, tS, tSt, tN);
 
   renderRekap(tree);
   renderChart(all);
   buildFilters(all);
   applyFilter();
+}
+
+function updateDashboardHero(all, tRev, tS, tSt, tN){
+  const reportCount = state.reports.length;
+  const datedRows = all.filter(r => r.year !== null && r.month !== null);
+  const sortedPeriods = [...new Set(datedRows.map(r => `${r.year}-${String(r.month + 1).padStart(2,'0')}`))].sort();
+  const latestPeriod = sortedPeriods.length ? sortedPeriods[sortedPeriods.length - 1] : '';
+  const latestLabel = latestPeriod ? `${MN[parseInt(latestPeriod.split('-')[1], 10) - 1]} ${latestPeriod.split('-')[0]}` : 'Belum ada data';
+  const monthTotals = state.reports.map(r => ({
+    name: r.name.replace(/\.xlsx?$/i,''),
+    total: r.rows.reduce((sum,row)=>sum+calcComm(row).fNet,0)
+  })).sort((a,b)=>b.total-a.total);
+  const best = monthTotals[0];
+  const peak = best ? Math.max(best.total, 1) : 1;
+
+  const accessEl = document.getElementById('hero-access');
+  const countEl = document.getElementById('hero-report-count');
+  const periodEl = document.getElementById('hero-period');
+  const spotVal = document.getElementById('spotlight-value');
+  const spotLabel = document.getElementById('spotlight-label');
+  const miniTrend = document.getElementById('mini-trend');
+  const insightList = document.getElementById('insight-list');
+
+  if (accessEl) accessEl.textContent = isAdmin ? 'Admin' : 'Publik';
+  if (countEl) countEl.textContent = `${reportCount} File`;
+  if (periodEl) periodEl.textContent = latestLabel;
+  if (spotVal) spotVal.innerHTML = reportCount ? masked('Rp ' + fmt(Math.round(tN))) : '-';
+  if (spotLabel) spotLabel.textContent = reportCount ? 'Akumulasi net owner dari semua file laporan saat ini.' : 'Belum ada data transaksi.';
+  if (miniTrend) {
+    miniTrend.innerHTML = monthTotals.slice(0,3).map(item => {
+      const pct = Math.max(8, Math.round((item.total / peak) * 100));
+      return `<div class="mini-trend-row"><span>${item.name}</span><div class="mini-bar"><i style="width:${pct}%"></i></div><strong>${isAdmin ? 'Rp ' + fmt(Math.round(item.total)) : '••••'}</strong></div>`;
+    }).join('') || `<div class="mini-trend-row"><span>Menunggu data</span><div class="mini-bar"><i style="width:0%"></i></div><strong>0%</strong></div>`;
+  }
+  if (insightList) {
+    const sellerCount = new Set(all.map(r => r.sellerRaw).filter(Boolean)).size;
+    const packageCount = new Set(all.map(r => r.pkgRaw).filter(Boolean)).size;
+    const sellerFreq = Object.entries(all.reduce((acc, row) => {
+      if (row.sellerRaw) acc[row.sellerRaw] = (acc[row.sellerRaw] || 0) + 1;
+      return acc;
+    }, {})).sort((a,b) => b[1] - a[1]);
+    const topSeller = sellerFreq[0]?.[0] || null;
+    const topSellerText = !topSeller
+      ? 'Belum ada nama penjual yang bisa dirangkum dari data saat ini.'
+      : isAdmin
+        ? `Aktivitas paling sering saat ini datang dari ${topSeller}, sehingga seller ini paling dominan muncul di riwayat transaksi.`
+        : 'Salah satu seller tampil paling dominan di riwayat, tetapi identitasnya tetap disensor pada mode publik.';
+
+    const insightNarratives = reportCount ? [
+      {
+        title: 'Cakupan Data',
+        heading: 'Ringkasan laporan sudah cukup lengkap untuk dibaca sekilas',
+        text: `Saat ini sistem memuat ${reportCount} file laporan dengan ${sellerCount} seller dan ${packageCount} jenis paket yang tercatat di dalam riwayat.`
+      },
+      {
+        title: 'Periode Aktif',
+        heading: latestLabel,
+        text: `Periode terbaru yang berhasil dikenali ada di ${latestLabel}, jadi dashboard sekarang terutama merefleksikan data sampai bulan tersebut.`
+      },
+      {
+        title: 'Pola Aktivitas',
+        heading: best ? `File paling menonjol: ${best.name}` : 'Belum ada pola utama',
+        text: best
+          ? `Dari susunan file yang ada, ${best.name} terlihat paling menonjol dalam kontribusi hasil keseluruhan sehingga layak dijadikan acuan pembacaan awal.`
+          : 'Belum ada cukup data untuk menentukan pola aktivitas utama.'
+      },
+      {
+        title: 'Sorotan Seller',
+        heading: topSeller ? 'Aktivitas seller terlihat terkonsentrasi' : 'Distribusi seller belum terbaca',
+        text: topSellerText
+      }
+    ] : [
+      {
+        title: 'Ringkasan',
+        heading: 'Insight akan muncul setelah data dimuat',
+        text: 'Sync data lebih dulu untuk melihat rangkuman otomatis dari seluruh laporan yang tersedia.'
+      }
+    ];
+
+    insightList.innerHTML = insightNarratives
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 3)
+      .map(item => `<div class="insight-item"><div class="insight-kicker">${item.title}</div><strong>${item.heading}</strong><span>${item.text}</span></div>`)
+      .join('');
+  }
 }
 
 // ─── REKAP ────────────────────────────────────────────────────────────────────
@@ -555,19 +902,84 @@ function renderChart(allRows){
   if(!ctx) return;
   if(state.chart) state.chart.destroy();
   const data=state.reports.map(r=>r.rows.reduce((a,row)=>a+calcComm(row).fNet,0));
+  const moodEl=document.getElementById('chart-mood');
+  if(moodEl){
+    if(data.length < 2) moodEl.textContent='Belum cukup periode untuk membaca arah tren.';
+    else {
+      const diff=data[data.length-1]-data[0];
+      moodEl.textContent=diff > 0
+        ? 'Arah umum tren terlihat menguat dari periode awal ke periode terbaru.'
+        : diff < 0
+          ? 'Arah umum tren terlihat lebih landai dibanding periode awal.'
+          : 'Arah umum tren terlihat stabil antar periode.';
+    }
+  }
   state.chart=new Chart(ctx,{
     type:'line',
     data:{
       labels:state.reports.map(r=>r.name.replace(/\.xlsx?$/i,'')),
-      datasets:[{label:'Net Profit',data,borderColor:'#3b82f6',tension:0.3,fill:true,backgroundColor:'rgba(59,130,246,0.1)'}]
+      datasets:[{
+        label:'Trend',
+        data,
+        borderColor:'#7dd3fc',
+        borderWidth:3,
+        tension:0.45,
+        pointRadius:0,
+        pointHoverRadius:0,
+        fill:true,
+        backgroundColor:(context)=>{
+          const chart=context.chart;
+          const {ctx,chartArea}=chart;
+          if(!chartArea) return 'rgba(59,130,246,0.18)';
+          const g=ctx.createLinearGradient(0,chartArea.top,0,chartArea.bottom);
+          g.addColorStop(0,'rgba(34,211,238,0.30)');
+          g.addColorStop(0.45,'rgba(59,130,246,0.16)');
+          g.addColorStop(1,'rgba(15,23,42,0.02)');
+          return g;
+        }
+      }]
     },
     options:{
       responsive:true,maintainAspectRatio:false,
+      interaction:{intersect:false,mode:'index'},
       scales:{
-        y:{beginAtZero:true,grid:{color:'rgba(255,255,255,0.05)'},ticks:{callback:v=>isAdmin?'Rp '+fmt(v):'••••'}},
-        x:{grid:{display:false}}
+        y:{
+          beginAtZero:true,
+          border:{display:false},
+          grid:{color:'rgba(255,255,255,0.04)',drawTicks:false},
+          ticks:{display:false}
+        },
+        x:{
+          border:{display:false},
+          grid:{display:false,drawTicks:false},
+          ticks:{color:'rgba(232,236,244,0.52)',font:{size:11}}
+        }
       },
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>isAdmin?'Rp '+fmt(Math.round(ctx.raw)):'(disensor)'}}}
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          enabled:true,
+          displayColors:false,
+          backgroundColor:'rgba(15,23,42,0.92)',
+          borderColor:'rgba(125,211,252,0.25)',
+          borderWidth:1,
+          titleColor:'#e8ecf4',
+          bodyColor:'#b8c2d9',
+          callbacks:{
+            title:(items)=>items[0]?.label || '',
+            label:(ctx)=>{
+              if(data.length < 2) return 'Awal pembacaan tren';
+              if(ctx.dataIndex===0) return 'Titik pembuka tren';
+              if(ctx.dataIndex===data.length-1) return 'Titik terbaru tren';
+              const prev=data[ctx.dataIndex-1];
+              if(ctx.raw > prev) return 'Menguat dari periode sebelumnya';
+              if(ctx.raw < prev) return 'Melemah dari periode sebelumnya';
+              return 'Stabil dari periode sebelumnya';
+            }
+          }
+        }
+      },
+      elements:{line:{capBezierPoints:true}}
     }
   });
 }
@@ -746,4 +1158,6 @@ document.getElementById('login-modal').addEventListener('click',function(e){if(e
 </script>
 </body>
 </html>
+
+
 
