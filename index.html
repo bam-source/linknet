@@ -6,347 +6,8 @@
 <title>MikMon Dashboard PRO - LINK.NET</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<!-- Firebase SDK -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-  import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-  import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-  // Konfigurasi dari Environment
-  const firebaseConfig = JSON.parse(__firebase_config);
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-  const appId = typeof __app_id !== 'undefined' ? __app_id : 'mikmon-dashboard-pro';
-
-  // State Global Aplikasi
-  window.state = {
-    master: { sellers: [], packages: [] },
-    commissions: {}, 
-    reports: [],
-    chart: null,
-    isSyncing: false,
-    currentTree: {},
-    user: null
-  };
-
-  const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-
-  // Inisialisasi Auth
-  const initAuth = async () => {
-    try {
-      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-        await signInWithCustomToken(auth, __initial_auth_token);
-      } else {
-        await signInAnonymously(auth);
-      }
-    } catch (err) {
-      console.error("Auth Error:", err);
-    }
-  };
-
-  initAuth();
-
-  onAuthStateChanged(auth, (user) => {
-    window.state.user = user;
-    if (user) {
-      document.getElementById('auth-status').innerText = `Cloud Sync: Active (${user.uid.substring(0,8)}...)`;
-      setupRealtimeSync(user.uid);
-    }
-  });
-
-  const getDashboardDocRef = () => {
-    return doc(db, 'artifacts', appId, 'public', 'data', 'states', 'dashboard_main');
-  };
-
-  function setupRealtimeSync(uid) {
-    const docRef = getDashboardDocRef();
-    onSnapshot(docRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const cloudData = docSnap.data();
-        window.state.commissions = cloudData.commissions || {};
-        window.state.reports = cloudData.reports || [];
-        window.state.master = cloudData.master || { sellers: [], packages: [] };
-        updateUI();
-      }
-    }, (err) => {
-      console.error("Firestore Sync Error:", err);
-    });
-  }
-
-  async function saveToCloud() {
-    if (!window.state.user) return;
-    const docRef = getDashboardDocRef();
-    try {
-      await setDoc(docRef, {
-        commissions: window.state.commissions,
-        reports: window.state.reports,
-        master: window.state.master,
-        lastUpdated: new Date().toISOString(),
-        updatedBy: window.state.user.uid
-      });
-    } catch (err) {
-      console.error("Save Cloud Error:", err);
-    }
-  }
-
-  // FUNGSI UTAMA SINKRONISASI
-  window.syncFromGitHub = async function() {
-    // --- KONFIGURASI GITHUB ANDA ---
-    const GH_CONFIG = {
-      user: 'bam-source', 
-      repo: 'linknet', 
-      path: 'DATA MASTER' // Mengarahkan ke folder DATA MASTER
-    };
-
-    if(window.state.isSyncing) return;
-    window.state.isSyncing = true;
-    toggleSyncBtn(true);
-    document.getElementById('auth-status').innerText = "Menghubungkan ke GitHub...";
-
-    try {
-      // Kita encodeURIComponent karena ada spasi di nama folder
-      const apiUrl = `https://api.github.com/repos/${GH_CONFIG.user}/${GH_CONFIG.repo}/contents/${encodeURIComponent(GH_CONFIG.path)}`;
-      const response = await fetch(apiUrl);
-      
-      if(!response.ok) {
-          if(response.status === 404) throw new Error(`Folder '${GH_CONFIG.path}' tidak ditemukan di repositori.`);
-          if(response.status === 403) throw new Error("Akses ditolak (Rate Limit). Pastikan Repo Public.");
-          const errorData = await response.json();
-          throw new Error(`GitHub Error: ${errorData.message}`);
-      }
-      
-      const contents = await response.json();
-      const excelFiles = contents.filter(f => f.name.toLowerCase().endsWith('.xlsx') || f.name.toLowerCase().endsWith('.xls'));
-      
-      if (excelFiles.length === 0) {
-          throw new Error(`Tidak ada file Excel di folder '${GH_CONFIG.path}'.`);
-      }
-
-      // Cari file Master (untuk setting komisi)
-      const masterFile = excelFiles.find(f => f.name.toUpperCase().includes('MASTER_DATA'));
-      if(masterFile) {
-          await processMasterFile(masterFile.download_url);
-      } else {
-          console.warn("File MASTER_DATA tidak ditemukan di folder tersebut.");
-      }
-
-      // Proses File Laporan
-      const reportFiles = excelFiles.filter(f => !f.name.toUpperCase().includes('MASTER_DATA'));
-      const newReports = [];
-
-      for(const file of reportFiles) {
-          try {
-              const fileRes = await fetch(file.download_url);
-              const arrayBuffer = await fileRes.arrayBuffer();
-              const wb = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
-              const sheet = wb.Sheets[wb.SheetNames[0]];
-              const raw = XLSX.utils.sheet_to_json(sheet);
-              
-              const processed = raw.map(r => {
-                  let prof = String(r.Profile || r.Paket || '').trim();
-                  let dp = prof, ds = 'Admin';
-                  if(prof.includes('-')) { 
-                      let pts = prof.split('-'); 
-                      dp = pts[0].trim(); 
-                      ds = pts.slice(1).join('-').trim(); 
-                  }
-
-                  let dVal = r.Date || r.Tanggal;
-                  let year = null, month = null;
-                  
-                  if(typeof dVal === 'number') {
-                      const dateObj = new Date((dVal - 25569) * 86400 * 1000);
-                      year = dateObj.getFullYear();
-                      month = dateObj.getMonth();
-                      dVal = `${dateObj.getDate()}/${dateObj.getMonth()+1}/${dateObj.getFullYear()}`;
-                  } else if(typeof dVal === 'string') {
-                      const parts = dVal.split(/[-/]/);
-                      if(parts.length >= 3) {
-                         if(parts[0].length === 4) { year = parseInt(parts[0]); month = parseInt(parts[1])-1; }
-                         else { year = parseInt(parts[2]); month = parseInt(parts[1])-1; }
-                      }
-                  }
-
-                  return { 
-                      date: dVal, 
-                      year, 
-                      month, 
-                      sellerRaw: ds, 
-                      pkgRaw: dp, 
-                      price: parseFloat(r.Price || r.Harga || 0) 
-                  };
-              });
-              newReports.push({ id: file.sha, name: file.name, rows: processed });
-          } catch (e) {
-              console.error(`Gagal memproses file ${file.name}:`, e);
-          }
-      }
-
-      window.state.reports = newReports;
-      await saveToCloud(); 
-      updateUI();
-      document.getElementById('auth-status').innerText = "Data Berhasil Diperbarui!";
-      
-    } catch (err) { 
-        console.error(err);
-        document.getElementById('auth-status').innerText = `Gagal: ${err.message}`;
-    } finally { 
-        window.state.isSyncing = false; 
-        toggleSyncBtn(false); 
-    }
-  }
-
-  async function processMasterFile(url) {
-      const res = await fetch(url);
-      const ab = await res.arrayBuffer();
-      const wb = XLSX.read(new Uint8Array(ab), {type: 'array'});
-      const sheetName = wb.SheetNames.find(n => n.toUpperCase() === 'KOMISI') || wb.SheetNames[0];
-      const data = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]);
-      const newComms = {};
-      data.forEach(row => {
-          const s = String(row.Seller || row.Penjual || '').trim();
-          const p = String(row.Package || row.Paket || '').trim();
-          if(s && p) {
-              if(!newComms[s]) newComms[s] = {};
-              newComms[s][p] = { 
-                  seller: { value: parseFloat(row.SellerComm || row.KomisiPenjual || 0) }, 
-                  staff: { value: parseFloat(row.StaffComm || row.KomisiPegawai || 0) } 
-              };
-          }
-      });
-      window.state.commissions = newComms;
-  }
-
-  function calculateRowCommission(row) {
-      const s = row.sellerRaw, p = row.pkgRaw;
-      const cfg = (window.state.commissions[s] && window.state.commissions[s][p]) ? window.state.commissions[s][p] : { seller:{value:0}, staff:{value:0} };
-      return { sComm: cfg.seller.value, stComm: cfg.staff.value, fNet: Math.max(0, row.price - cfg.staff.value) };
-  }
-
-  function updateUI() {
-    const allRows = window.state.reports.flatMap(r => r.rows);
-    let tRev = 0, tS = 0, tSt = 0, tN = 0;
-    const tree = {};
-
-    allRows.forEach(row => {
-      tRev += row.price;
-      const { sComm, stComm, fNet } = calculateRowCommission(row);
-      tS += sComm; tSt += stComm; tN += fNet;
-      
-      if(row.year !== null && row.month !== null) {
-          if(!tree[row.year]) tree[row.year] = {};
-          if(!tree[row.year][row.month]) tree[row.year][row.month] = { net: 0, sTotal: 0, stTotal: 0, sellers: {} };
-          
-          const mData = tree[row.year][row.month];
-          mData.net += fNet;
-          mData.sTotal += sComm;
-          mData.stTotal += stComm;
-
-          if(!mData.sellers[row.sellerRaw]) mData.sellers[row.sellerRaw] = { sComm: 0, stComm: 0, transactions: [] };
-          mData.sellers[row.sellerRaw].sComm += sComm;
-          mData.sellers[row.sellerRaw].stComm += stComm;
-          mData.sellers[row.sellerRaw].transactions.push({ ...row, sCommRow: sComm, stCommRow: stComm });
-      }
-    });
-
-    window.state.currentTree = tree; 
-    document.getElementById('stat-rev').innerText = 'Rp ' + fmt(tRev);
-    document.getElementById('stat-comm').innerText = 'Rp ' + fmt(Math.round(tS));
-    document.getElementById('stat-staff').innerText = 'Rp ' + fmt(Math.round(tSt));
-    document.getElementById('stat-net').innerText = 'Rp ' + fmt(Math.round(tN));
-
-    renderRekap(tree);
-    renderChart();
-    document.getElementById('table-body').innerHTML = allRows.slice(0,100).map(r => `<tr><td>${r.date}</td><td>${r.pkgRaw}</td><td>${r.sellerRaw}</td><td>Rp ${fmt(r.price)}</td><td><span style="color:var(--green)">OK</span></td></tr>`).join('');
-  }
-
-  function renderRekap(tree) {
-    const container = document.getElementById('rekap-yearly-root');
-    const years = Object.keys(tree).sort((a,b) => b-a);
-    if(years.length === 0) {
-        container.innerHTML = '<p style="padding:20px; color:var(--text3)">Belum ada data untuk ditampilkan.</p>';
-        return;
-    }
-    container.innerHTML = years.map(y => {
-        const months = Object.keys(tree[y]).sort((a,b) => b-a);
-        return `
-          <div class="year-block">
-              <div class="year-header"><h4>Tahun ${y}</h4></div>
-              <div class="monthly-list">
-                  ${months.map(m => {
-                      const d = tree[y][m];
-                      const sellerNames = Object.keys(d.sellers).sort();
-                      return `
-                      <div class="month-row">
-                          <button class="month-trigger" onclick="this.parentElement.classList.toggle('active')">
-                              <div class="month-title">
-                                  <span class="month-name">${monthNames[m]}</span>
-                                  <div class="month-summary">
-                                      <span style="color:var(--accent2)">Net: <b>Rp ${fmt(Math.round(d.net))}</b></span>
-                                  </div>
-                              </div>
-                              <span style="font-size:10px; color:var(--text3)">DETAIL ▾</span>
-                          </button>
-                          <div class="month-details">
-                              <div class="detail-grid">
-                                  <div>
-                                      <table class="detail-table">
-                                          <thead><tr><th style="text-align:left">Penjual</th><th style="text-align:right">Komisi Penjual</th></tr></thead>
-                                          <tbody>
-                                              ${sellerNames.map(sn => `<tr><td>${sn}</td><td style="text-align:right; color:var(--green)">Rp ${fmt(Math.round(d.sellers[sn].sComm))}</td></tr>`).join('')}
-                                          </tbody>
-                                      </table>
-                                  </div>
-                                  <div>
-                                      <table class="detail-table">
-                                          <thead><tr><th style="text-align:left">Penjual</th><th style="text-align:right">Komisi Pegawai</th></tr></thead>
-                                          <tbody>
-                                              ${sellerNames.map(sn => `<tr><td>${sn}</td><td style="text-align:right; color:var(--purple)">Rp ${fmt(Math.round(d.sellers[sn].stComm))}</td></tr>`).join('')}
-                                          </tbody>
-                                      </table>
-                                  </div>
-                              </div>
-                          </div>
-                      </div>`;
-                  }).join('')}
-              </div>
-          </div>`;
-    }).join('');
-  }
-
-  function renderChart() {
-    const ctx = document.getElementById('chartRevenue')?.getContext('2d');
-    if(!ctx) return;
-    if(window.state.chart) window.state.chart.destroy();
-    const labels = window.state.reports.map(r => r.name);
-    const dataPoints = window.state.reports.map(r => r.rows.reduce((acc,row) => acc + calculateRowCommission(row).fNet, 0));
-    window.state.chart = new Chart(ctx, { 
-      type:'line', 
-      data:{ labels, datasets:[{ label:'Net Profit', data: dataPoints, borderColor:'#3b82f6', tension:0.3, fill:true, backgroundColor:'rgba(59,130,246,0.1)' }] }, 
-      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} } 
-    });
-  }
-
-  function toggleSyncBtn(loading) {
-      const b = document.getElementById('btn-sync-top');
-      if(!b) return;
-      b.disabled = loading;
-      b.innerHTML = loading ? '<span class="loading-spinner"></span> Memuat...' : '🔄 Update Data';
-  }
-
-  function fmt(n) { return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
-
-  window.switchTab = function(id) {
-    document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.add('hidden'));
-    document.getElementById('tab-' + id).classList.remove('hidden');
-    document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
-    document.getElementById('nav-' + id).classList.add('active');
-  }
-</script>
 <style>
-/* CSS Styling */
-*{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#0f1117;--bg2:#161b27;--bg3:#1e2535;--surface:#242d3f;
   --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
@@ -355,31 +16,34 @@
   --green:#10b981;--amber:#f59e0b;--red:#ef4444;--purple:#a855f7;
   --r:10px;--rs:6px;
 }
-body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5;min-height:100vh}
-.app{max-width:1240px;margin:0 auto;padding:24px;display:flex;flex-direction:column;gap:24px}
-header{display:flex;justify-content:space-between;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--border)}
-.logo{font-size:20px;font-weight:700;display:flex;align-items:center;gap:10px}
-.logo span{background:var(--accent);color:#fff;padding:4px 8px;border-radius:6px;font-size:14px}
-.nav{display:flex;gap:4px;background:var(--bg2);padding:4px;border-radius:var(--r);border:1px solid var(--border)}
-.nav button{background:transparent;border:none;color:var(--text2);padding:8px 16px;border-radius:var(--rs);cursor:pointer;font-weight:500;transition:0.2s}
-.nav button.active{background:var(--surface);color:var(--text)}
-.panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:20px}
-.btn{background:var(--accent);color:#fff;border:none;padding:10px 20px;border-radius:var(--rs);cursor:pointer;display:inline-flex;align-items:center;gap:8px}
-.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:20px}
-.card h3{font-size:11px;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
-.card .val{font-size:22px;font-weight:700}
-.table-wrap{overflow-x:auto; max-height:500px}
-table{width:100%;border-collapse:collapse;font-size:12px}
-th{text-align:left;padding:10px;background:var(--bg3);border-bottom:2px solid var(--border)}
-td{padding:10px;border-bottom:1px solid var(--border);color:var(--text2)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:sans-serif;line-height:1.5;min-height:100vh}
+.app{max-width:1200px;margin:0 auto;padding:20px;display:flex;flex-direction:column;gap:20px}
+header{display:flex;justify-content:space-between;align-items:center;padding-bottom:15px;border-bottom:1px solid var(--border)}
+.logo{font-size:18px;font-weight:bold}
+.logo span{background:var(--accent);padding:2px 6px;border-radius:4px;font-size:12px;margin-left:5px}
+.nav{display:flex;gap:5px;background:var(--bg2);padding:5px;border-radius:var(--r)}
+.nav button{background:transparent;border:none;color:var(--text2);padding:8px 15px;border-radius:var(--rs);cursor:pointer;transition:0.2s}
+.nav button.active{background:var(--surface);color:white}
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:20px}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:15px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:15px}
+.card h3{font-size:11px;color:var(--text3);text-transform:uppercase;margin-bottom:5px}
+.card .val{font-size:20px;font-weight:bold}
 .hidden{display:none}
-.loading-spinner { border: 2px solid rgba(255,255,255,0.1); border-left-color: var(--accent); border-radius: 50%; width: 14px; height: 14px; animation: spin 1s linear infinite; display: inline-block; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.month-row.active .month-details {display: block;}
-.month-details {display: none; padding: 15px; background: var(--bg); border-top: 1px solid var(--border);}
-.month-trigger {width: 100%; background: none; border: none; padding: 15px; display: flex; justify-content: space-between; cursor: pointer; color: var(--text);}
-.detail-grid {display: grid; grid-template-columns: 1fr 1fr; gap: 20px;}
-.detail-table {width: 100%; text-align: left;}
+.btn{background:var(--accent);color:white;border:none;padding:10px 15px;border-radius:var(--rs);cursor:pointer;font-weight:600}
+.btn:disabled{opacity:0.5;cursor:not-allowed}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th{text-align:left;padding:10px;background:var(--bg3);font-size:12px}
+td{padding:10px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2)}
+.status-msg{font-size:11px;color:var(--accent2);margin-top:5px}
+.year-block{margin-bottom:15px;border:1px solid var(--border);border-radius:var(--rs);overflow:hidden}
+.year-header{background:var(--bg3);padding:10px;font-weight:bold}
+.month-row{border-top:1px solid var(--border)}
+.month-btn{width:100%;text-align:left;background:none;border:none;padding:12px;color:white;cursor:pointer;display:flex;justify-content:space-between}
+.month-content{display:none;padding:15px;background:var(--bg);border-top:1px solid var(--border)}
+.month-row.open .month-content{display:block}
 </style>
 </head>
 <body>
@@ -388,62 +52,313 @@ td{padding:10px;border-bottom:1px solid var(--border);color:var(--text2)}
   <header>
     <div class="logo">LINK.NET <span>PRO</span></div>
     <div class="nav">
-      <button id="nav-dashboard" class="active" onclick="switchTab('dashboard')">Dashboard</button>
-      <button id="nav-rekap" onclick="switchTab('rekap')">💰 Rekap</button>
-      <button id="nav-data" onclick="switchTab('data')">📊 Riwayat</button>
-      <button id="nav-settings" onclick="switchTab('settings')">⚙️ Debug</button>
-    </div>
-    <div style="display:flex; align-items:center; gap:10px">
-        <span id="auth-status" style="font-size:10px; color:var(--accent2)">Siap</span>
-        <button class="btn" id="btn-sync-top" onclick="syncFromGitHub()">🔄 Update Data</button>
+      <button id="n-dash" class="active" onclick="switchTab('dash')">Dashboard</button>
+      <button id="n-rekap" onclick="switchTab('rekap')">Rekap</button>
+      <button id="n-data" onclick="switchTab('data')">Data</button>
+      <button id="n-debug" onclick="switchTab('debug')">Status</button>
     </div>
   </header>
 
-  <div id="tab-dashboard">
-    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px">
-      <div class="card"><h3>Revenue</h3><div class="val" id="stat-rev">Rp 0</div></div>
-      <div class="card"><h3>Komisi Agen</h3><div class="val" id="stat-comm" style="color:var(--green)">Rp 0</div></div>
-      <div class="card"><h3>Komisi Pegawai</h3><div class="val" id="stat-staff" style="color:var(--purple)">Rp 0</div></div>
-      <div class="card"><h3>Net Profit</h3><div class="val" id="stat-net" style="color:var(--accent2)">Rp 0</div></div>
+  <div id="status-area" class="status-msg">Inisialisasi sistem...</div>
+
+  <!-- DASHBOARD -->
+  <div id="tab-dash">
+    <div class="card-grid">
+      <div class="card"><h3>Total Revenue</h3><div class="val" id="v-rev">Rp 0</div></div>
+      <div class="card"><h3>Komisi Seller</h3><div class="val" id="v-sell" style="color:var(--green)">Rp 0</div></div>
+      <div class="card"><h3>Komisi Staff</h3><div class="val" id="v-staff" style="color:var(--purple)">Rp 0</div></div>
+      <div class="card"><h3>Net Profit</h3><div class="val" id="v-net" style="color:var(--accent2)">Rp 0</div></div>
     </div>
     <div class="panel" style="margin-top:20px">
-       <div style="height:250px"><canvas id="chartRevenue"></canvas></div>
+      <button class="btn" id="btn-sync" onclick="syncData()">🔄 Tarik Data dari GitHub</button>
+      <div style="height:300px; margin-top:20px"><canvas id="mainChart"></canvas></div>
     </div>
   </div>
 
+  <!-- REKAP -->
   <div id="tab-rekap" class="hidden">
     <div class="panel">
-      <div id="rekap-yearly-root"></div>
+      <div id="rekap-list">Memuat rekap...</div>
     </div>
   </div>
 
+  <!-- DATA -->
   <div id="tab-data" class="hidden">
     <div class="panel">
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Tanggal</th><th>Paket</th><th>Seller</th><th>Harga</th><th>Status</th></tr></thead>
-          <tbody id="table-body"></tbody>
+          <thead><tr><th>Tanggal</th><th>Item</th><th>Seller</th><th>Harga</th></tr></thead>
+          <tbody id="data-body"></tbody>
         </table>
       </div>
     </div>
   </div>
 
-  <div id="tab-settings" class="hidden">
+  <!-- DEBUG -->
+  <div id="tab-debug" class="hidden">
     <div class="panel">
-      <h2>DEBUG INFO (GitHub)</h2>
-      <p>Target User: <b>bam-source</b></p>
-      <p>Target Repo: <b>linknet</b></p>
-      <p>Target Folder: <b style="color:var(--accent2)">DATA MASTER</b></p>
-      <hr style="margin:10px 0; opacity:0.1">
-      <p style="color:var(--amber)"><b>Panduan Perbaikan di GitHub:</b></p>
-      <ul style="margin-left: 20px; font-size: 13px; color: var(--text2)">
-        <li>Pastikan folder di GitHub Anda bernama <b>DATA MASTER</b> (huruf besar semua).</li>
-        <li>Pastikan file <b>MASTER_DATA.xlsx</b> ada di dalam folder tersebut.</li>
-        <li>Pastikan repositori <b>linknet</b> diatur sebagai <b>Public</b>.</li>
-      </ul>
+      <h3>Informasi Folder</h3>
+      <p>Mencari di: <code style="color:var(--amber)">DATA MASTER/</code></p>
+      <p>User: <code>bam-source</code> | Repo: <code>linknet</code></p>
+      <div id="debug-log" style="margin-top:15px; font-family:monospace; font-size:12px; color:var(--text3)"></div>
     </div>
   </div>
 </div>
 
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+// Ambil config aman
+const fbConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'linknet-app';
+
+// Global State
+window.appState = {
+    user: null,
+    commissions: {},
+    reports: [],
+    chart: null
+};
+
+// Navigasi
+window.switchTab = (tab) => {
+    document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.add('hidden'));
+    document.getElementById('tab-' + tab).classList.remove('hidden');
+    document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+    document.getElementById('n-' + tab).classList.add('active');
+};
+
+// Inisialisasi Firebase
+if (fbConfig) {
+    const app = initializeApp(fbConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const initAuth = async () => {
+        try {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+        } catch (err) {
+            console.error("Auth Error:", err);
+        }
+    };
+    initAuth();
+
+    onAuthStateChanged(auth, (user) => {
+        window.appState.user = user;
+        if (user) {
+            document.getElementById('status-area').innerText = "Cloud Terhubung (User: " + user.uid.slice(0,5) + ")";
+            // FIX: Menggunakan path genap (6 segmen) /artifacts/{appId}/public/data/states/{docId}
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'states', 'main_state');
+            onSnapshot(docRef, (snap) => {
+                if (snap.exists()) {
+                    const d = snap.data();
+                    window.appState.commissions = d.commissions || {};
+                    window.appState.reports = d.reports || [];
+                    renderUI();
+                }
+            }, (err) => {
+                console.error("Firestore Error:", err);
+            });
+        }
+    });
+
+    window.saveState = async () => {
+        if (!window.appState.user) return;
+        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'states', 'main_state');
+        try {
+            await setDoc(docRef, {
+                commissions: window.appState.commissions,
+                reports: window.appState.reports,
+                ts: Date.now(),
+                updatedBy: window.appState.user.uid
+            });
+        } catch (err) {
+            console.error("Save Error:", err);
+        }
+    };
+}
+
+// SINKRONISASI GITHUB
+window.syncData = async () => {
+    const btn = document.getElementById('btn-sync');
+    const status = document.getElementById('status-area');
+    const debug = document.getElementById('debug-log');
+    
+    btn.disabled = true;
+    status.innerText = "Menghubungkan ke GitHub...";
+    debug.innerHTML += "> Memulai sinkronisasi folder 'DATA MASTER'<br>";
+
+    try {
+        const user = 'bam-source', repo = 'linknet', folder = 'DATA MASTER';
+        const url = `https://api.github.com/repos/${user}/${repo}/contents/${encodeURIComponent(folder)}`;
+        
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Folder tidak ditemukan atau Rate Limit.");
+        
+        const files = await res.json();
+        const excels = files.filter(f => f.name.endsWith('.xlsx'));
+        
+        debug.innerHTML += `> Ditemukan ${excels.length} file Excel.<br>`;
+
+        // 1. Proses Master Data
+        const masterFile = excels.find(f => f.name.includes('MASTER_DATA'));
+        if (masterFile) {
+            const mRes = await fetch(masterFile.download_url);
+            const mab = await mRes.arrayBuffer();
+            const mwb = XLSX.read(new Uint8Array(mab), {type:'array'});
+            const mData = XLSX.utils.sheet_to_json(mwb.Sheets[mwb.SheetNames[0]]);
+            
+            const newComms = {};
+            mData.forEach(r => {
+                const s = String(r.Seller || '').trim();
+                const p = String(r.Package || '').trim();
+                if(s && p) {
+                    if(!newComms[s]) newComms[s] = {};
+                    newComms[s][p] = { seller: parseFloat(r.KomisiSeller || 0), staff: parseFloat(r.KomisiStaff || 0) };
+                }
+            });
+            window.appState.commissions = newComms;
+        }
+
+        // 2. Proses Laporan
+        const reportList = [];
+        for (const f of excels) {
+            if (f.name.includes('MASTER_DATA')) continue;
+            const rRes = await fetch(f.download_url);
+            const rab = await rRes.arrayBuffer();
+            const rwb = XLSX.read(new Uint8Array(rab), {type:'array'});
+            const rData = XLSX.utils.sheet_to_json(rwb.Sheets[rwb.SheetNames[0]]);
+            
+            const rows = rData.map(r => {
+                let d = r.Date || r.Tanggal;
+                let dt = new Date();
+                if (typeof d === 'number') dt = new Date((d - 25569) * 86400 * 1000);
+                else if (d) dt = new Date(d);
+
+                const prof = String(r.Profile || r.Paket || '');
+                const pkg = prof.split('-')[0].trim();
+                const seller = prof.split('-')[1]?.trim() || 'Admin';
+
+                return {
+                    date: dt.toLocaleDateString('id-ID'),
+                    year: dt.getFullYear(),
+                    month: dt.getMonth(),
+                    pkg,
+                    seller,
+                    price: parseFloat(r.Price || r.Harga || 0)
+                };
+            });
+            reportList.push({ name: f.name, data: rows });
+        }
+
+        window.appState.reports = reportList;
+        if (window.saveState) await window.saveState();
+        renderUI();
+        status.innerText = "Data Berhasil Diperbarui!";
+    } catch (e) {
+        status.innerText = "Error: " + e.message;
+        debug.innerHTML += `<span style="color:red">> Error: ${e.message}</span><br>`;
+    } finally {
+        btn.disabled = false;
+    }
+};
+
+function renderUI() {
+    const all = window.appState.reports.flatMap(r => r.data);
+    let rev = 0, sCom = 0, stCom = 0, net = 0;
+    const tree = {};
+
+    all.forEach(r => {
+        rev += r.price;
+        const cfg = (window.appState.commissions[r.seller] && window.appState.commissions[r.seller][r.pkg]) 
+                    ? window.appState.commissions[r.seller][r.pkg] : {seller:0, staff:0};
+        
+        sCom += cfg.seller;
+        stCom += cfg.staff;
+        net += (r.price - cfg.staff);
+
+        if(!tree[r.year]) tree[r.year] = {};
+        if(!tree[r.year][r.month]) tree[r.year][r.month] = { net: 0, sellers: {} };
+        
+        const m = tree[r.year][r.month];
+        m.net += (r.price - cfg.staff);
+        if(!m.sellers[r.seller]) m.sellers[r.seller] = { s:0, st:0 };
+        m.sellers[r.seller].s += cfg.seller;
+        m.sellers[r.seller].st += cfg.staff;
+    });
+
+    const f = (n) => "Rp " + Math.round(n).toLocaleString('id-ID');
+    document.getElementById('v-rev').innerText = f(rev);
+    document.getElementById('v-sell').innerText = f(sCom);
+    document.getElementById('v-staff').innerText = f(stCom);
+    document.getElementById('v-net').innerText = f(net);
+
+    // Render Table
+    document.getElementById('data-body').innerHTML = all.slice(0, 50).map(r => `
+        <tr><td>${r.date}</td><td>${r.pkg}</td><td>${r.seller}</td><td>${f(r.price)}</td></tr>
+    `).join('');
+
+    // Render Rekap
+    const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"];
+    let html = "";
+    Object.keys(tree).sort((a,b)=>b-a).forEach(y => {
+        html += `<div class="year-block"><div class="year-header">${y}</div>`;
+        Object.keys(tree[y]).sort((a,b)=>b-a).forEach(m => {
+            const data = tree[y][m];
+            html += `
+                <div class="month-row">
+                    <button class="month-btn" onclick="this.parentElement.classList.toggle('open')">
+                        <span>${months[m]}</span>
+                        <span><b>${f(data.net)}</b> ▾</span>
+                    </button>
+                    <div class="month-content">
+                        <table style="font-size:11px">
+                            <thead><tr><th>Seller</th><th>Komisi</th><th>Beban Staff</th></tr></thead>
+                            <tbody>
+                                ${Object.keys(data.sellers).map(sn => `
+                                    <tr><td>${sn}</td><td>${f(data.sellers[sn].s)}</td><td>${f(data.sellers[sn].st)}</td></tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        });
+        html += `</div>`;
+    });
+    document.getElementById('rekap-list').innerHTML = html || "Belum ada data.";
+    updateChart(all);
+}
+
+function updateChart(data) {
+    const ctx = document.getElementById('mainChart');
+    if (!ctx) return;
+    if (window.appState.chart) window.appState.chart.destroy();
+    
+    const groups = {};
+    data.forEach(r => {
+        const k = `${r.date}`;
+        groups[k] = (groups[k] || 0) + r.price;
+    });
+
+    const labels = Object.keys(groups).slice(-10);
+    const vals = labels.map(l => groups[l]);
+
+    window.appState.chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{ label: 'Omzet Harian', data: vals, borderColor: '#3b82f6', tension: 0.4 }]
+        },
+        options: { maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+}
+</script>
 </body>
 </html>
