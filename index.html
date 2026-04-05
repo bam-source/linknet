@@ -590,12 +590,59 @@ const MN = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","
 let filteredRows=[], curPage=1;
 const PER_PAGE = 50;
 
+function getPeriodKey(year, month){
+  if(year===null||month===null||year===undefined||month===undefined) return '';
+  return `${year}-${String(month + 1).padStart(2,'0')}`;
+}
+
+function getRowTimestamp(row){
+  if(row.year!==null&&row.month!==null){
+    const raw=String(row.date||'').trim();
+    const parts=raw.split(/[-/]/).map(v=>parseInt(v,10));
+    if(parts.length>=3 && parts.every(v=>!Number.isNaN(v))){
+      let day=1, month=row.month, year=row.year;
+      if(String(raw).includes('/')){
+        day=parts[0];
+      }else if(String(raw).includes('-') && String(raw).split('-')[0].length===4){
+        year=parts[0];
+        month=parts[1]-1;
+        day=parts[2];
+      }else{
+        day=parts[0];
+      }
+      return new Date(year, month, day).getTime();
+    }
+    return new Date(row.year, row.month, 1).getTime();
+  }
+  return 0;
+}
+
+function getReportPeriod(report){
+  const datedRows=(report.rows||[]).filter(row=>row.year!==null&&row.month!==null);
+  if(datedRows.length){
+    return datedRows.reduce((best,row)=>{
+      const current=(row.year*100)+(row.month+1);
+      return current>best?current:best;
+    },0);
+  }
+  const match=String(report.name||'').match(/(20\d{2}).*?(0?[1-9]|1[0-2])/);
+  return match ? (parseInt(match[1],10)*100)+parseInt(match[2],10) : 0;
+}
+
+function sortReportsByPeriod(reports){
+  return [...reports].sort((a,b)=>{
+    const diff=getReportPeriod(a)-getReportPeriod(b);
+    if(diff!==0) return diff;
+    return String(a.name||'').localeCompare(String(b.name||''));
+  });
+}
+
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 window.onload = async () => {
   try {
     const sc=localStorage.getItem('mk_comm_auto'), sr=localStorage.getItem('mk_reports_auto');
     if(sc) state.commissions=JSON.parse(sc);
-    if(sr) state.reports=JSON.parse(sr);
+    if(sr) state.reports=sortReportsByPeriod(JSON.parse(sr));
   } catch(e){}
   await loadAdminUsers();
   restoreSession();
@@ -632,7 +679,7 @@ async function syncFromGitHub() {
       });
       newR.push({id:file.sha,name:file.name,rows});
     }
-    state.reports=newR;
+    state.reports=sortReportsByPeriod(newR);
     saveData(); updateUI();
   } catch(e){console.error(e);}
   finally{state.isSyncing=false;toggleSyncBtn(false);}
@@ -692,7 +739,7 @@ function updateUI(){
 function updateDashboardHero(all, tRev, tS, tSt, tN){
   const reportCount = state.reports.length;
   const datedRows = all.filter(r => r.year !== null && r.month !== null);
-  const sortedPeriods = [...new Set(datedRows.map(r => `${r.year}-${String(r.month + 1).padStart(2,'0')}`))].sort();
+  const sortedPeriods = [...new Set(datedRows.map(r => getPeriodKey(r.year, r.month)))].sort((a,b)=>a.localeCompare(b));
   const latestPeriod = sortedPeriods.length ? sortedPeriods[sortedPeriods.length - 1] : '';
   const latestLabel = latestPeriod ? `${MN[parseInt(latestPeriod.split('-')[1], 10) - 1]} ${latestPeriod.split('-')[0]}` : 'Belum ada data';
   const monthTotals = state.reports.map(r => ({
@@ -777,10 +824,10 @@ function updateDashboardHero(all, tRev, tS, tSt, tN){
 // ─── REKAP ────────────────────────────────────────────────────────────────────
 function renderRekap(tree){
   const root=document.getElementById('rekap-root');
-  const years=Object.keys(tree).sort((a,b)=>b-a);
+  const years=Object.keys(tree).sort((a,b)=>a-b);
   if(!years.length){root.innerHTML='<p style="font-size:12px;color:var(--text3);padding:20px">Belum ada data. Klik 🔄 Update Data.</p>';return;}
   root.innerHTML=years.map(y=>{
-    const months=Object.keys(tree[y]).sort((a,b)=>b-a);
+    const months=Object.keys(tree[y]).sort((a,b)=>a-b);
     return`<div class="year-block">
       <div class="year-header"><h4>Tahun ${y}</h4></div>
       <div class="monthly-list">${months.map(m=>{
@@ -910,8 +957,8 @@ function renderChart(allRows){
 // ─── FILTER & TABLE ───────────────────────────────────────────────────────────
 function buildFilters(all){
   const months=new Map();
-  all.forEach(r=>{if(r.year!==null&&r.month!==null){const k=`${r.year}-${String(r.month).padStart(2,'0')}`;if(!months.has(k))months.set(k,`${MN[r.month]} ${r.year}`);}});
-  const sm=[...months.entries()].sort((a,b)=>b[0].localeCompare(a[0]));
+  all.forEach(r=>{if(r.year!==null&&r.month!==null){const k=getPeriodKey(r.year,r.month);if(!months.has(k))months.set(k,`${MN[r.month]} ${r.year}`);}});
+  const sm=[...months.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
   const mSel=document.getElementById('f-month'), curM=mSel.value;
   mSel.innerHTML='<option value="">Semua Bulan</option>'+sm.map(([k,v])=>`<option value="${k}"${curM===k?' selected':''}>${v}</option>`).join('');
   const sellers=[...new Set(all.map(r=>r.sellerRaw))].filter(Boolean).sort();
@@ -928,14 +975,12 @@ function applyFilter(){
   const fS=document.getElementById('f-seller')?.value||'';
   const fP=document.getElementById('f-pkg')?.value||'';
   filteredRows=all.filter(r=>{
-    if(fM){const k=`${r.year}-${String(r.month).padStart(2,'0')}`;if(k!==fM)return false;}
+    if(fM){const k=getPeriodKey(r.year,r.month);if(k!==fM)return false;}
     if(fS&&r.sellerRaw!==fS)return false;
     if(fP&&r.pkgRaw!==fP)return false;
     return true;
   }).sort((a,b)=>{
-    const ka=`${a.year}-${String(a.month).padStart(2,'0')}-${a.date}`;
-    const kb=`${b.year}-${String(b.month).padStart(2,'0')}-${b.date}`;
-    return kb.localeCompare(ka);
+    return getRowTimestamp(a)-getRowTimestamp(b);
   });
   curPage=1; renderTable();
 }
@@ -1023,7 +1068,7 @@ function printSeller(year,mi,sellerName){
   if(!data?.sellers[sellerName])return;
   const sd=data.sellers[sellerName], mn=MN[mi];
   let tS=0,tC=0;
-  const txs=[...sd.transactions].sort((a,b)=>a.date.localeCompare(b.date));
+  const txs=[...sd.transactions].sort((a,b)=>getRowTimestamp(a)-getRowTimestamp(b));
   txs.forEach(t=>{tS+=t.price;tC+=t.sCommRow;});
   document.getElementById('print-area').innerHTML=`<div class="print-container">
     <div class="print-header"><div class="print-header-left"><h1>LINK.NET</h1></div><div class="print-header-right"><p><b>LAPORAN PENJUALAN AGEN</b></p><p>Ref: LN/${year}/${(parseInt(mi)+1).toString().padStart(2,'0')}/${sellerName.substring(0,3).toUpperCase()}</p></div></div>
