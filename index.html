@@ -298,6 +298,7 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
         <span class="auth-dot"></span>
         <span id="auth-label">Publik</span>
       </div>
+      <button id="btn-logout" class="btn btn-outline btn-sm hidden" onclick="doLogout()">Logout</button>
     </div>
   </header>
 
@@ -345,18 +346,18 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
         <div class="metric-note">Total nilai transaksi dari seluruh laporan yang sudah berhasil dibaca.</div>
       </div>
       <div class="metric-card metric-seller">
-        <div class="metric-top"><div><h3>Komisi Penjual</h3><div class="val" id="stat-comm" style="color:var(--green)">-</div></div><div class="metric-icon">AG</div></div>
-        <div class="metric-note">Akumulasi komisi yang dialokasikan untuk agen atau penjual.</div>
+        <div class="metric-top"><div><h3>Penjual (Total)</h3><div class="val" id="stat-comm" style="color:var(--green)">-</div></div><div class="metric-icon">AG</div></div>
+        <div class="metric-note">Akumulasi hasil yang dialokasikan untuk seluruh penjual.</div>
       </div>
       <div class="metric-card metric-staff">
-        <div class="metric-top"><div><h3>Komisi Pegawai</h3><div class="val" id="stat-staff" style="color:var(--purple)">-</div></div><div class="metric-icon">ST</div></div>
-        <div class="metric-note">Total alokasi komisi internal untuk pegawai dan operasional.</div>
+        <div class="metric-top"><div><h3>Staff (Total)</h3><div class="val" id="stat-staff" style="color:var(--purple)">-</div></div><div class="metric-icon">ST</div></div>
+        <div class="metric-note">Total alokasi hasil internal untuk staff dan operasional.</div>
       </div>
       <div class="metric-card metric-net">
-        <div class="metric-top"><div><h3>Net Owner (Total)</h3><div class="val" id="stat-net" style="color:var(--accent2)">-</div></div><div class="metric-icon">NT</div></div>
-        <div class="metric-note">Ringkasan nilai net owner berdasarkan konfigurasi komisi saat ini.</div>
+        <div class="metric-top"><div><h3>Owner (Total)</h3><div class="val" id="stat-net" style="color:var(--accent2)">-</div></div><div class="metric-icon">NT</div></div>
+        <div class="metric-note">Ringkasan hasil owner berdasarkan konfigurasi komisi saat ini.</div>
       </div>
-      <div class="panel chart-panel">
+      <div id="chart-panel" class="panel chart-panel">
         <h2>Tren Performa Bulanan</h2>
         <div class="panel-sub">Arah performa divisualkan sebagai gelombang tren agar lebih fokus ke ritme naik turunnya hasil.</div>
         <div class="chart-shell">
@@ -421,9 +422,9 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
             <tr>
               <th>No</th><th>Tanggal</th><th>Paket</th><th>Seller</th>
               <th style="text-align:right">Harga</th>
-              <th style="text-align:right">Komisi Penjual</th>
-              <th style="text-align:right">Komisi Pegawai</th>
-              <th style="text-align:right">Net Owner</th>
+              <th style="text-align:right">Penjual</th>
+              <th style="text-align:right">Staff</th>
+              <th style="text-align:right">Owner</th>
             </tr>
           </thead>
           <tbody id="table-body"></tbody>
@@ -535,7 +536,7 @@ async function loadConfig(){
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
 let isAdmin = false;
 
-function handleAuthClick() { isAdmin ? doLogout() : openModal(); }
+function handleAuthClick() { if(!isAdmin) openModal(); }
 
 function openModal() {
   document.getElementById('login-modal').classList.remove('hidden');
@@ -574,11 +575,16 @@ function refreshAll() {
   // update badge
   const badge = document.getElementById('auth-badge');
   const label = document.getElementById('auth-label');
+  const logoutBtn = document.getElementById('btn-logout');
   badge.classList.toggle('is-admin', isAdmin);
-  label.textContent = isAdmin ? 'Admin ✓' : 'Publik';
+  label.textContent = isAdmin ? 'Admin' : 'Publik';
+  badge.style.cursor = isAdmin ? 'default' : 'pointer';
   document.getElementById('public-notice').style.display = isAdmin ? 'none' : 'flex';
+  document.getElementById('chart-panel')?.classList.toggle('hidden', !isAdmin);
+  if(logoutBtn) logoutBtn.classList.toggle('hidden', !isAdmin);
 
   updateUI();
+}
 }
 
 // ─── SENSOR ───────────────────────────────────────────────────────────────────
@@ -853,8 +859,8 @@ function renderRekap(tree){
             <div class="month-title">
               <span class="month-name">${MN[m]}</span>
               <div class="month-summary">
-                <span style="color:var(--accent2)">Net: <b>${masked('Rp '+fmt(Math.round(d.net)))}</b></span>
-                <span style="color:var(--green)">Seller: <b>${masked('Rp '+fmt(Math.round(d.sTotal)))}</b></span>
+                <span style="color:var(--accent2)">Owner: <b>${masked('Rp '+fmt(Math.round(d.net)))}</b></span>
+                <span style="color:var(--green)">Penjual: <b>${masked('Rp '+fmt(Math.round(d.sTotal)))}</b></span>
                 <span style="color:var(--purple)">Staff: <b>${masked('Rp '+fmt(Math.round(d.stTotal)))}</b></span>
               </div>
             </div>
@@ -863,11 +869,11 @@ function renderRekap(tree){
           <div class="month-details">
             <div class="detail-grid">
               <div><table class="detail-table">
-                <thead><tr><th style="text-align:left">Penjual</th><th style="text-align:right">Komisi Penjual</th></tr></thead>
+                <thead><tr><th style="text-align:left">Penjual</th><th style="text-align:right">Penjual</th></tr></thead>
                 <tbody>${sn.map(n=>`<tr><td>${maskedName(n)}</td><td style="text-align:right;color:var(--green)">${masked('Rp '+fmt(Math.round(d.sellers[n].sComm)))}</td></tr>`).join('')}</tbody>
               </table></div>
               <div><table class="detail-table">
-                <thead><tr><th style="text-align:left">Penjual</th><th style="text-align:right">Komisi Pegawai</th></tr></thead>
+                <thead><tr><th style="text-align:left">Penjual</th><th style="text-align:right">Staff</th></tr></thead>
                 <tbody>${sn.map(n=>`<tr><td>${maskedName(n)}</td><td style="text-align:right;color:var(--purple)">${masked('Rp '+fmt(Math.round(d.sellers[n].stComm)))}</td></tr>`).join('')}</tbody>
               </table></div>
             </div>
@@ -1023,9 +1029,9 @@ function renderTable(){
   document.getElementById('f-count').textContent=total+' transaksi';
   document.getElementById('f-summary').innerHTML=[
     ['Revenue',masked('Rp '+fmt(Math.round(tRev))),'var(--text)'],
-    ['Komisi Penjual',masked('Rp '+fmt(Math.round(tSC))),'var(--green)'],
-    ['Komisi Pegawai',masked('Rp '+fmt(Math.round(tSt))),'var(--purple)'],
-    ['Net Owner',masked('Rp '+fmt(Math.round(tN))),'var(--accent2)'],
+    ['Penjual',masked('Rp '+fmt(Math.round(tSC))),'var(--green)'],
+    ['Staff',masked('Rp '+fmt(Math.round(tSt))),'var(--purple)'],
+    ['Owner',masked('Rp '+fmt(Math.round(tN))),'var(--accent2)'],
   ].map(([l,v,c])=>`<div class="fchip"><span style="color:var(--text3)">${l}:</span> <b style="color:${c}">${v}</b></div>`).join('');
 
   document.getElementById('table-body').innerHTML=pageRows.length===0
@@ -1104,9 +1110,9 @@ function printStaff(year,mi){
   const mn=MN[mi], sels=Object.keys(data.sellers).sort();
   let total=0; sels.forEach(n=>total+=data.sellers[n].stComm);
   runPrint(`<div class="print-container">
-    <div class="print-header"><div class="print-header-left"><h1>LINK.NET</h1></div><div class="print-header-right"><p><b>REKAP KOMISI INTERNAL</b></p><p>Periode: ${mn} ${year}</p></div></div>
-    <div class="print-summary-total"><div><span style="font-size:10px;color:#666;text-transform:uppercase">Total Komisi Pegawai</span><h3>Rp ${fmt(Math.round(total))}</h3></div></div>
-    <table class="print-table" style="margin-top:20px"><thead><tr><th style="width:36px">No</th><th>Sumber Transaksi (Agen)</th><th style="text-align:right">Alokasi Komisi Pegawai</th></tr></thead>
+    <div class="print-header"><div class="print-header-left"><h1>LINK.NET</h1></div><div class="print-header-right"><p><b>REKAP STAFF</b></p><p>Periode: ${mn} ${year}</p></div></div>
+    <div class="print-summary-total"><div><span style="font-size:10px;color:#666;text-transform:uppercase">TOTAL STAFF</span><h3>Rp ${fmt(Math.round(total))}</h3></div></div>
+    <table class="print-table" style="margin-top:20px"><thead><tr><th style="width:36px">No</th><th>Sumber Transaksi (Penjual)</th><th style="text-align:right">Alokasi Staff</th></tr></thead>
     <tbody>${sels.filter(n=>data.sellers[n].stComm>0).map((n,i)=>`<tr><td>${i+1}</td><td>Agen: ${n}</td><td style="text-align:right">Rp ${fmt(Math.round(data.sellers[n].stComm))}</td></tr>`).join('')}</tbody></table>
     <div class="print-footer-info" style="margin-top:60px"><div style="margin-left:auto"><p style="font-size:11px">Penanggung Jawab,</p><br><br><br><p style="font-weight:bold;border-top:1px solid #000;display:inline-block;min-width:150px">Manager Operational</p></div></div>
   </div>`);
