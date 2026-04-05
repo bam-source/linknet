@@ -55,10 +55,6 @@
     }
   });
 
-  /**
-   * FIX: Path Firestore harus memiliki segmen GENAP untuk dokumen.
-   * Path yang benar: artifacts / {appId} / public / data / {collectionName} / {documentId}
-   */
   const getDashboardDocRef = () => {
     return doc(db, 'artifacts', appId, 'public', 'data', 'states', 'dashboard_main');
   };
@@ -74,15 +70,6 @@
         window.state.reports = cloudData.reports || [];
         window.state.master = cloudData.master || { sellers: [], packages: [] };
         updateUI();
-      } else {
-        // Migrasi dari localStorage jika cloud kosong
-        const sc = localStorage.getItem('mk_comm_auto');
-        const sr = localStorage.getItem('mk_reports_auto');
-        if (sc || sr) {
-          window.state.commissions = sc ? JSON.parse(sc) : {};
-          window.state.reports = sr ? JSON.parse(sr) : [];
-          saveToCloud(); 
-        }
       }
     }, (err) => {
       console.error("Firestore Sync Error:", err);
@@ -106,78 +93,107 @@
     }
   }
 
-  // Fungsi sinkronisasi GitHub
+  // Fungsi sinkronisasi GitHub dengan kredensial baru
   window.syncFromGitHub = async function() {
+    // UPDATED CONFIG: Menggunakan bam-source / linknet
     const GH_CONFIG = {
-      user: 'bam-source', // Ganti dengan username anda
-      repo: 'linknet', // Ganti dengan repo anda
+      user: 'bam-source', 
+      repo: 'linknet', 
       path: 'DATA MASTER'     
     };
 
-    if(!GH_CONFIG.user || GH_CONFIG.user === 'bam-source') {
-        alert("Silahkan atur GH_CONFIG (Username/Repo) di dalam kode terlebih dahulu.");
-        return;
-    }
-    
     if(window.state.isSyncing) return;
     window.state.isSyncing = true;
     toggleSyncBtn(true);
 
     try {
+      // 1. Ambil daftar file dari folder path
       const apiUrl = `https://api.github.com/repos/${GH_CONFIG.user}/${GH_CONFIG.repo}/contents/${encodeURIComponent(GH_CONFIG.path)}`;
       const response = await fetch(apiUrl);
-      if(!response.ok) throw new Error("Folder tidak ditemukan.");
+      
+      if(!response.ok) {
+          const errorData = await response.json();
+          throw new Error(`GitHub Error: ${errorData.message}. Pastikan folder "${GH_CONFIG.path}" ada di repositori.`);
+      }
       
       const contents = await response.json();
       const excelFiles = contents.filter(f => f.name.endsWith('.xlsx') || f.name.endsWith('.xls'));
       
-      const masterFile = excelFiles.find(f => f.name.toUpperCase().includes('MASTER_DATA'));
-      if(masterFile) await processMasterFile(masterFile.download_url);
+      if (excelFiles.length === 0) {
+          throw new Error("Tidak ditemukan file Excel (.xlsx) di dalam folder tersebut.");
+      }
 
+      // 2. Proses File Master (untuk setting komisi)
+      const masterFile = excelFiles.find(f => f.name.toUpperCase().includes('MASTER_DATA'));
+      if(masterFile) {
+          await processMasterFile(masterFile.download_url);
+      } else {
+          console.warn("File MASTER_DATA tidak ditemukan, menggunakan komisi default (0).");
+      }
+
+      // 3. Proses File Laporan (selain file master)
       const reportFiles = excelFiles.filter(f => !f.name.toUpperCase().includes('MASTER_DATA'));
       const newReports = [];
 
       for(const file of reportFiles) {
-          const fileRes = await fetch(file.download_url);
-          const arrayBuffer = await fileRes.arrayBuffer();
-          const wb = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
-          const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-          
-          const processed = raw.map(r => {
-              let prof = String(r.Profile || r.Paket || '').trim();
-              let dp = prof, ds = 'Admin';
-              if(prof.includes('-')) { 
-                  let pts = prof.split('-'); 
-                  dp = pts[0].trim(); 
-                  ds = pts.slice(1).join('-').trim(); 
-              }
-
-              let dVal = r.Date;
-              let year = null, month = null;
+          try {
+              const fileRes = await fetch(file.download_url);
+              const arrayBuffer = await fileRes.arrayBuffer();
+              const wb = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
+              const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
               
-              if(typeof dVal === 'number') {
-                  const dateObj = new Date((dVal - 25569) * 86400 * 1000);
-                  year = dateObj.getFullYear();
-                  month = dateObj.getMonth();
-                  dVal = `${dateObj.getDate()}/${dateObj.getMonth()+1}/${dateObj.getFullYear()}`;
-              } else if(typeof dVal === 'string') {
-                  const parts = dVal.split(/[-/]/);
-                  if(parts.length >= 3) {
-                     if(parts[0].length === 4) { year = parseInt(parts[0]); month = parseInt(parts[1])-1; }
-                     else { year = parseInt(parts[2]); month = parseInt(parts[1])-1; }
+              const processed = raw.map(r => {
+                  let prof = String(r.Profile || r.Paket || '').trim();
+                  let dp = prof, ds = 'Admin';
+                  if(prof.includes('-')) { 
+                      let pts = prof.split('-'); 
+                      dp = pts[0].trim(); 
+                      ds = pts.slice(1).join('-').trim(); 
                   }
-              }
 
-              return { date: dVal, year, month, sellerRaw: ds, pkgRaw: dp, price: parseFloat(r.Price || r.Harga || 0) };
-          });
-          newReports.push({ id: file.sha, name: file.name, rows: processed });
+                  let dVal = r.Date;
+                  let year = null, month = null;
+                  
+                  if(typeof dVal === 'number') {
+                      const dateObj = new Date((dVal - 25569) * 86400 * 1000);
+                      year = dateObj.getFullYear();
+                      month = dateObj.getMonth();
+                      dVal = `${dateObj.getDate()}/${dateObj.getMonth()+1}/${dateObj.getFullYear()}`;
+                  } else if(typeof dVal === 'string') {
+                      const parts = dVal.split(/[-/]/);
+                      if(parts.length >= 3) {
+                         if(parts[0].length === 4) { year = parseInt(parts[0]); month = parseInt(parts[1])-1; }
+                         else { year = parseInt(parts[2]); month = parseInt(parts[1])-1; }
+                      }
+                  }
+
+                  return { 
+                      date: dVal, 
+                      year, 
+                      month, 
+                      sellerRaw: ds, 
+                      pkgRaw: dp, 
+                      price: parseFloat(r.Price || r.Harga || 0) 
+                  };
+              });
+              newReports.push({ id: file.sha, name: file.name, rows: processed });
+          } catch (e) {
+              console.error(`Gagal memproses file ${file.name}:`, e);
+          }
       }
 
       window.state.reports = newReports;
       await saveToCloud(); 
       updateUI();
+      
+      // Update info di tab setting
+      document.getElementById('info-repo').innerText = `Source: ${GH_CONFIG.user}/${GH_CONFIG.repo}`;
+      
     } catch (err) { 
-        console.error(err); 
+        console.error(err);
+        // Tampilkan pesan error sederhana ke user tanpa alert browser
+        const statusEl = document.getElementById('auth-status');
+        if(statusEl) statusEl.innerText = `Error: ${err.message}`;
     } finally { 
         window.state.isSyncing = false; 
         toggleSyncBtn(false); 
@@ -252,7 +268,10 @@
   function renderRekap(tree) {
     const container = document.getElementById('rekap-yearly-root');
     const years = Object.keys(tree).sort((a,b) => b-a);
-    if(years.length === 0) return;
+    if(years.length === 0) {
+        container.innerHTML = '<p style="padding:20px; color:var(--text3)">Belum ada data laporan yang diproses.</p>';
+        return;
+    }
 
     container.innerHTML = years.map(y => {
         const months = Object.keys(tree[y]).sort((a,b) => b-a);
@@ -316,13 +335,17 @@
     const ctx = document.getElementById('chartRevenue')?.getContext('2d');
     if(!ctx) return;
     if(window.state.chart) window.state.chart.destroy();
+    
+    const labels = window.state.reports.map(r => r.name.replace('.xlsx','').replace('.xls',''));
+    const dataPoints = window.state.reports.map(r => r.rows.reduce((acc,row) => acc + calculateRowCommission(row).fNet, 0));
+
     window.state.chart = new Chart(ctx, { 
       type:'line', 
       data:{ 
-        labels: window.state.reports.map(r=>r.name.replace('.xlsx','')), 
+        labels: labels, 
         datasets:[{ 
           label:'Net Profit', 
-          data: window.state.reports.map(r=>r.rows.reduce((acc,row)=>acc+calculateRowCommission(row).fNet,0)), 
+          data: dataPoints, 
           borderColor:'#3b82f6', 
           tension:0.3, 
           fill:true, 
@@ -350,7 +373,6 @@
 
   function fmt(n) { return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
 
-  // Fungsi Global untuk UI
   window.switchTab = function(id) {
     document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.add('hidden'));
     document.getElementById('tab-' + id).classList.remove('hidden');
@@ -367,6 +389,7 @@
     let totalSales = 0, totalComm = 0;
     const sortedTx = [...sellerData.transactions].sort((a,b) => a.date.localeCompare(b.date));
     sortedTx.forEach(tx => { totalSales += tx.price; totalComm += tx.sCommRow; });
+    
     let html = `<div class="print-container"><div class="print-header"><div class="print-header-left"><h1>LINK.NET</h1></div><div class="print-header-right"><p><b>LAPORAN PENJUALAN AGEN</b></p><p>Ref: LN/${year}/${(parseInt(monthIndex)+1).toString().padStart(2,'0')}/${sellerName.substring(0,3).toUpperCase()}</p></div></div><div class="print-meta"><div class="print-meta-box"><h4>Nama Penjual / Agen</h4><p>${sellerName}</p></div><div class="print-meta-box" style="border-color:#333; background:#f9f9f9"><h4>Periode Laporan</h4><p>${monthName} ${year}</p></div></div><div class="print-summary-total"><div><span style="font-size:10px; color:#666; text-transform:uppercase">Total Komisi Diterima</span><h3>Rp ${fmt(Math.round(totalComm))}</h3></div><div style="text-align:right"><span style="font-size:10px; color:#666; text-transform:uppercase">Volume Penjualan</span><h3>Rp ${fmt(Math.round(totalSales))}</h3></div></div><p style="font-size:10px; margin-top:30px; font-weight:bold; text-transform:uppercase; border-bottom:1px solid #000; padding-bottom:5px">Rincian Transaksi:</p><table class="print-table"><thead><tr><th style="width:30px">No</th><th style="width:100px">Tanggal</th><th>Paket / Voucher</th><th style="text-align:right; width:100px">Harga (Rp)</th><th style="text-align:right; width:120px">Komisi Agen (Rp)</th></tr></thead><tbody>`;
     sortedTx.forEach((tx, index) => { html += `<tr><td style="text-align:center">${index + 1}</td><td>${tx.date}</td><td>${tx.pkgRaw}</td><td style="text-align:right">${fmt(tx.price)}</td><td style="text-align:right"><b>${fmt(Math.round(tx.sCommRow))}</b></td></tr>`; });
     html += `</tbody></table><div class="print-footer-info"><div><p style="font-size:11px">Diterima Oleh,</p><br><br><br><p style="font-weight:bold; border-top:1px solid #000; display:inline-block; min-width:150px">${sellerName}</p></div><div><p style="font-size:11px">Manajemen LINK.NET,</p><br><br><br><p style="font-weight:bold; border-top:1px solid #000; display:inline-block; min-width:150px">Admin System</p></div></div><div class="print-date">Dokumen ini sah dikeluarkan oleh system LINK.NET pada ${new Date().toLocaleString('id-ID')}.</div></div>`;
@@ -390,7 +413,7 @@
   }
 </script>
 <style>
-/* CSS dipertahankan sama seperti sebelumnya */
+/* CSS Styling */
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#0f1117;--bg2:#161b27;--bg3:#1e2535;--surface:#242d3f;
@@ -536,10 +559,10 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
       <div style="font-size:13px; color:var(--text2); display:flex; flex-direction:column; gap:10px">
         <p>Aplikasi ini tersinkronisasi otomatis dengan Database Cloud (Firestore):</p>
         <div style="background:var(--bg3); padding:15px; border-radius:var(--rs); border:1px solid var(--border)">
-            <div id="info-repo" style="font-family:monospace; color:var(--accent2)">Source: Cloud Sync Engine</div>
-            <div id="info-path" style="font-family:monospace; margin-top:5px">Path: /artifacts/[appId]/public/data/states/dashboard_main</div>
+            <div id="info-repo" style="font-family:monospace; color:var(--accent2)">Source: bam-source/linknet</div>
+            <div id="info-path" style="font-family:monospace; margin-top:5px">Folder: DATA MASTER</div>
         </div>
-        <p style="margin-top:10px; color:var(--amber)">⚠️ <b>Penting:</b> Klik "Update Data" agar data terbaru dari GitHub terunggah ke Cloud.</p>
+        <p style="margin-top:10px; color:var(--amber)">⚠️ <b>Tips:</b> Jika data tidak muncul setelah klik Update, pastikan struktur folder di GitHub adalah <code>linknet/DATA MASTER/</code> dan berisi file <code>.xlsx</code>.</p>
       </div>
     </div>
   </div>
