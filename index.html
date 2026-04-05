@@ -470,6 +470,7 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
 <script>
 // ─── CREDENTIALS ─────────────────────────────────────────────────────────────
 const ADMIN_FILE = './admin-users.json';
+const KOMISI_FILE = './komisi.json';
 const AUTH_KEY = 'lk_admin_session';
 let adminUsers = [];
 
@@ -484,6 +485,26 @@ async function loadAdminUsers() {
     adminUsers = [];
   }
   return adminUsers;
+}
+
+async function loadKomisiJson(url = KOMISI_FILE) {
+  const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}v=${Date.now()}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Gagal memuat komisi.json');
+  const data = await res.json();
+  const nc = {};
+  (Array.isArray(data) ? data : []).forEach(item => {
+    const sv = String(item.seller || item.Seller || item.penjual || item.Penjual || '').trim();
+    const p = String(item.package || item.Package || item.paket || item.Paket || '').trim();
+    if (sv && p) {
+      if (!nc[sv]) nc[sv] = {};
+      nc[sv][p] = {
+        seller: { value: parseFloat(item.sellerComm ?? item.SellerComm ?? item.KomisiPenjual ?? 0) || 0 },
+        staff: { value: parseFloat(item.staffComm ?? item.StaffComm ?? item.KomisiPegawai ?? 0) || 0 }
+      };
+    }
+  });
+  state.commissions = nc;
+  return nc;
 }
 
 function getSavedSession() {
@@ -645,6 +666,7 @@ window.onload = async () => {
     if(sr) state.reports=sortReportsByPeriod(JSON.parse(sr));
   } catch(e){}
   await loadAdminUsers();
+  try { await loadKomisiJson(); saveData(); } catch(e) {}
   restoreSession();
   refreshAll();
   syncFromGitHub();
@@ -656,13 +678,18 @@ async function syncFromGitHub() {
   if(state.isSyncing) return;
   state.isSyncing=true; toggleSyncBtn(true);
   try {
-    const api=`https://api.github.com/repos/${GH.user}/${GH.repo}/contents/${encodeURIComponent(GH.path||'DATA MASTER')}`;
+    const baseApi=`https://api.github.com/repos/${GH.user}/${GH.repo}/contents`;
+    const komisiRes=await fetch(`${baseApi}/komisi.json`);
+    if(komisiRes.ok){
+      const komisiFile=await komisiRes.json();
+      await loadKomisiJson(komisiFile.download_url);
+    }
+
+    const api=`${baseApi}/${encodeURIComponent(GH.path||'DATA MASTER')}`;
     const res=await fetch(api);
     if(!res.ok) throw new Error('Folder tidak ditemukan');
     const contents=await res.json();
     const xls=contents.filter(f=>f.name.endsWith('.xlsx')||f.name.endsWith('.xls'));
-    const master=xls.find(f=>f.name.toUpperCase().includes('MASTER_DATA'));
-    if(master) await processMaster(master.download_url);
     const reportFiles=xls.filter(f=>!f.name.toUpperCase().includes('MASTER_DATA'));
     const newR=[];
     for(const file of reportFiles){
@@ -683,19 +710,6 @@ async function syncFromGitHub() {
     saveData(); updateUI();
   } catch(e){console.error(e);}
   finally{state.isSyncing=false;toggleSyncBtn(false);}
-}
-
-async function processMaster(url){
-  const ab=await (await fetch(url)).arrayBuffer();
-  const wb=XLSX.read(new Uint8Array(ab),{type:'array'});
-  const sn=wb.SheetNames.find(n=>n.toUpperCase()==='KOMISI')||wb.SheetNames[0];
-  const data=XLSX.utils.sheet_to_json(wb.Sheets[sn]);
-  const nc={};
-  data.forEach(r=>{
-    const sv=String(r.Seller||r.Penjual||'').trim(), p=String(r.Package||r.Paket||'').trim();
-    if(sv&&p){if(!nc[sv])nc[sv]={};nc[sv][p]={seller:{value:parseFloat(r.SellerComm||r.KomisiPenjual||0)},staff:{value:parseFloat(r.StaffComm||r.KomisiPegawai||0)}};}
-  });
-  state.commissions=nc;
 }
 
 function calcComm(row){
