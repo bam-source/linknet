@@ -69,7 +69,9 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
 .detail-table th {background: none; border-bottom: 1px solid var(--border); padding: 8px 0; color: var(--text3); font-size: 10px; text-transform: uppercase;}
 .detail-table td {padding: 8px 0; border-bottom: 1px dotted var(--border); color: var(--text2);}
 
-.print-actions { margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border); display: flex; gap: 10px; }
+.print-actions { margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 10px; }
+.seller-print-group { background: rgba(255,255,255,0.03); padding: 10px; border-radius: var(--rs); width: 100%; }
+.seller-print-group p { margin-bottom: 10px; font-weight: 600; color: var(--text2); font-size: 11px; }
 
 .hidden{display:none}
 .loading-spinner { border: 2px solid rgba(255,255,255,0.1); border-left-color: var(--accent); border-radius: 50%; width: 14px; height: 14px; animation: spin 1s linear infinite; display: inline-block; }
@@ -79,11 +81,13 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
 @media print {
     body * { visibility: hidden; }
     #print-area, #print-area * { visibility: visible; }
-    #print-area { position: absolute; left: 0; top: 0; width: 100%; color: #000; background: #fff; padding: 20px; }
-    .print-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    .print-table th, .print-table td { border: 1px solid #ddd; padding: 10px; text-align: left; color: #000; }
+    #print-area { position: absolute; left: 0; top: 0; width: 100%; color: #000 !important; background: #fff !important; padding: 20px; }
+    .print-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }
+    .print-table th, .print-table td { border: 1px solid #333; padding: 8px; text-align: left; color: #000 !important; }
     .print-header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
-    .print-footer { margin-top: 30px; font-size: 10px; text-align: right; }
+    .print-header h2 { margin: 0; font-size: 18px; }
+    .print-header p { margin: 5px 0 0; font-size: 12px; }
+    .print-footer { margin-top: 30px; font-size: 10px; text-align: right; border-top: 1px solid #eee; padding-top: 10px; }
     .no-print { display: none !important; }
 }
 </style>
@@ -306,13 +310,14 @@ function updateUI() {
         mData.sTotal += sComm;
         mData.stTotal += stComm;
 
-        if(!mData.sellers[row.sellerRaw]) mData.sellers[row.sellerRaw] = { sComm: 0, stComm: 0 };
+        if(!mData.sellers[row.sellerRaw]) mData.sellers[row.sellerRaw] = { sComm: 0, stComm: 0, transactions: [] };
         mData.sellers[row.sellerRaw].sComm += sComm;
         mData.sellers[row.sellerRaw].stComm += stComm;
+        mData.sellers[row.sellerRaw].transactions.push({ ...row, sCommRow: sComm, stCommRow: stComm });
     }
   });
 
-  state.currentTree = tree; // Simpan untuk fungsi print
+  state.currentTree = tree; 
 
   document.getElementById('stat-rev').innerText = 'Rp ' + fmt(tRev);
   document.getElementById('stat-comm').innerText = 'Rp ' + fmt(Math.round(tS));
@@ -372,8 +377,13 @@ function renderRekap(tree) {
                                 </div>
                             </div>
                             <div class="print-actions">
-                                <button class="btn btn-outline btn-sm" onclick="printReport('${y}', '${m}', 'penjual')">🖨️ Cetak Laporan Penjual</button>
-                                <button class="btn btn-outline btn-sm" onclick="printReport('${y}', '${m}', 'pegawai')">🖨️ Cetak Laporan Pegawai</button>
+                                <div class="seller-print-group">
+                                    <p>CETAK LAPORAN PENJUAL (DENGAN RINCIAN TRANSAKSI):</p>
+                                    <div style="display:flex; flex-wrap:wrap; gap:8px">
+                                        ${sellerNames.map(sn => `<button class="btn btn-outline btn-sm" onclick="printReportSellerDetail('${y}', '${m}', '${sn}')">👤 ${sn}</button>`).join('')}
+                                    </div>
+                                </div>
+                                <button class="btn btn-outline btn-sm" style="background:var(--bg3)" onclick="printReportStaffSummary('${y}', '${m}')">👔 Cetak Rekap Komisi Pegawai</button>
                             </div>
                         </div>
                     </div>`;
@@ -383,7 +393,89 @@ function renderRekap(tree) {
   }).join('');
 }
 
-function printReport(year, monthIndex, type) {
+// Fungsi Cetak Laporan Penjual (Sangat Detail - Per Seller)
+function printReportSellerDetail(year, monthIndex, sellerName) {
+    const data = state.currentTree[year][monthIndex];
+    if(!data || !data.sellers[sellerName]) return;
+
+    const sellerData = data.sellers[sellerName];
+    const monthName = monthNames[monthIndex];
+    const printArea = document.getElementById('print-area');
+
+    let html = `
+        <div class="print-header">
+            <h2>LAPORAN PENJUALAN & KOMISI</h2>
+            <p style="font-size:16px; font-weight:bold">${sellerName}</p>
+            <p>Periode: ${monthName} ${year}</p>
+        </div>
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th style="width:40px">No</th>
+                    <th>Tanggal</th>
+                    <th>Paket / Profile</th>
+                    <th style="text-align:right">Harga (Rp)</th>
+                    <th style="text-align:right">Komisi Anda (Rp)</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    let totalSales = 0;
+    let totalComm = 0;
+
+    // Urutkan transaksi berdasarkan tanggal
+    const sortedTx = [...sellerData.transactions].sort((a,b) => a.date.localeCompare(b.date));
+
+    sortedTx.forEach((tx, index) => {
+        totalSales += tx.price;
+        totalComm += tx.sCommRow;
+        html += `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${tx.date}</td>
+                <td>${tx.pkgRaw}</td>
+                <td style="text-align:right">${fmt(tx.price)}</td>
+                <td style="text-align:right">${fmt(Math.round(tx.sCommRow))}</td>
+            </tr>
+        `;
+    });
+
+    html += `
+            </tbody>
+            <tfoot>
+                <tr style="font-weight:bold; background:#eee">
+                    <td colspan="3" style="text-align:right">TOTAL</td>
+                    <td style="text-align:right">Rp ${fmt(Math.round(totalSales))}</td>
+                    <td style="text-align:right">Rp ${fmt(Math.round(totalComm))}</td>
+                </tr>
+            </tfoot>
+        </table>
+        
+        <div style="margin-top:20px; display:flex; justify-content:space-between">
+            <div style="font-size:11px">
+                <p>Keterangan:</p>
+                <p>- Data ini dicetak secara otomatis dari sistem MikMon PRO.</p>
+                <p>- Silakan hubungi admin jika terdapat selisih data.</p>
+            </div>
+            <div style="text-align:center; min-width:200px">
+                <p>Hormat Kami,</p>
+                <br><br><br>
+                <p>( Admin MikMon )</p>
+            </div>
+        </div>
+
+        <div class="print-footer">
+            <p>Dicetak pada: ${new Date().toLocaleString('id-ID')}</p>
+        </div>
+    `;
+
+    printArea.innerHTML = html;
+    window.print();
+}
+
+// Fungsi Cetak Rekap Pegawai (Sesuai Konsep Sebelumnya)
+function printReportStaffSummary(year, monthIndex) {
     const data = state.currentTree[year][monthIndex];
     if(!data) return;
 
@@ -393,15 +485,15 @@ function printReport(year, monthIndex, type) {
 
     let html = `
         <div class="print-header">
-            <h2>LAPORAN KOMISI ${type.toUpperCase()}</h2>
+            <h2>REKAP KOMISI PEGAWAI (SUMMARY)</h2>
             <p>Periode: ${monthName} ${year}</p>
         </div>
         <table class="print-table">
             <thead>
                 <tr>
                     <th>No</th>
-                    <th>Nama Penjual</th>
-                    <th style="text-align:right">Komisi (${type === 'penjual' ? 'Penjual' : 'Pegawai'})</th>
+                    <th>Nama Penjual (Asal Transaksi)</th>
+                    <th style="text-align:right">Hak Komisi Pegawai</th>
                 </tr>
             </thead>
             <tbody>
@@ -409,7 +501,7 @@ function printReport(year, monthIndex, type) {
 
     let total = 0;
     sellers.forEach((sn, index) => {
-        const val = type === 'penjual' ? data.sellers[sn].sComm : data.sellers[sn].stComm;
+        const val = data.sellers[sn].stComm;
         if(val > 0) {
             total += val;
             html += `
@@ -425,8 +517,8 @@ function printReport(year, monthIndex, type) {
     html += `
             </tbody>
             <tfoot>
-                <tr style="font-weight:bold; background:#f9f9f9">
-                    <td colspan="2" style="text-align:right">TOTAL</td>
+                <tr style="font-weight:bold; background:#eee">
+                    <td colspan="2" style="text-align:right">TOTAL KOMISI PEGAWAI</td>
                     <td style="text-align:right">Rp ${fmt(Math.round(total))}</td>
                 </tr>
             </tfoot>
