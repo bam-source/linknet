@@ -309,8 +309,54 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
 
 <script>
 // ─── CREDENTIALS ─────────────────────────────────────────────────────────────
-const DEFAULT = { user: 'admin', pass: 'linknet123' };
-function getCreds() { try { const s=localStorage.getItem('lk_creds'); return s?JSON.parse(s):DEFAULT; } catch(e){return DEFAULT;} }
+const ADMIN_FILE = './admin-users.json';
+const AUTH_KEY = 'lk_admin_session';
+let adminUsers = [];
+
+async function loadAdminUsers() {
+  try {
+    const res = await fetch(`${ADMIN_FILE}?v=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Gagal memuat admin-users.json');
+    const data = await res.json();
+    adminUsers = Array.isArray(data) ? data.filter(u => u && u.username && u.password) : [];
+  } catch (e) {
+    console.error(e);
+    adminUsers = [];
+  }
+  return adminUsers;
+}
+
+function getSavedSession() {
+  try {
+    const s = localStorage.getItem(AUTH_KEY);
+    return s ? JSON.parse(s) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function saveSession(user) {
+  localStorage.setItem(AUTH_KEY, JSON.stringify({
+    username: user.username,
+    loginAt: new Date().toISOString()
+  }));
+}
+
+function clearSession() {
+  localStorage.removeItem(AUTH_KEY);
+}
+
+function restoreSession() {
+  const session = getSavedSession();
+  if (!session || !session.username) return false;
+  const match = adminUsers.find(u => u.username === session.username);
+  if (!match) {
+    clearSession();
+    return false;
+  }
+  isAdmin = true;
+  return true;
+}
 
 // ─── GITHUB CONFIG ────────────────────────────────────────────────────────────
 const GH = (() => { try { const s=localStorage.getItem('lk_gh'); return s?JSON.parse(s):{user:'',repo:'',path:'DATA MASTER'}; } catch(e){return {user:'',repo:'',path:'DATA MASTER'};} })();
@@ -332,9 +378,12 @@ function closeModal() { document.getElementById('login-modal').classList.add('hi
 function doLogin() {
   const u = document.getElementById('login-user').value.trim();
   const p = document.getElementById('login-pass').value;
-  const c = getCreds();
-  if (u === c.user && p === c.pass) {
-    isAdmin = true; closeModal(); refreshAll();
+  const match = adminUsers.find(acc => acc.username === u && acc.password === p);
+  if (match) {
+    isAdmin = true;
+    saveSession(match);
+    closeModal();
+    refreshAll();
   } else {
     document.getElementById('login-err').style.display = 'block';
     document.getElementById('login-pass').value = '';
@@ -344,7 +393,10 @@ function doLogin() {
 
 function doLogout() {
   if (!confirm('Keluar dari mode Admin?')) return;
-  isAdmin = false; refreshAll(); switchTab('dashboard');
+  isAdmin = false;
+  clearSession();
+  refreshAll();
+  switchTab('dashboard');
 }
 
 function refreshAll() {
@@ -379,12 +431,14 @@ let filteredRows=[], curPage=1;
 const PER_PAGE = 50;
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
-window.onload = () => {
+window.onload = async () => {
   try {
     const sc=localStorage.getItem('mk_comm_auto'), sr=localStorage.getItem('mk_reports_auto');
     if(sc) state.commissions=JSON.parse(sc);
     if(sr) state.reports=JSON.parse(sr);
   } catch(e){}
+  await loadAdminUsers();
+  restoreSession();
   refreshAll();
   syncFromGitHub();
 };
@@ -719,6 +773,18 @@ function saveData(){
   try{localStorage.setItem('mk_comm_auto',JSON.stringify(state.commissions));localStorage.setItem('mk_reports_auto',JSON.stringify(state.reports));}catch(e){}
 }
 function fmt(n){return Number(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
+
+function saveCredentials(){
+  const msg=document.getElementById('cred-msg');
+  if(!msg) return;
+  msg.style.display='block';
+  msg.style.color='var(--amber)';
+  msg.textContent='Kredensial admin sekarang dibaca dari file admin-users.json. Edit file itu lalu refresh halaman.';
+}
+
+function showAdminFileInfo(){
+  alert('Edit file admin-users.json dengan format array, misalnya:\n\n[\n  { \"username\": \"admin\", \"password\": \"linknet123\", \"name\": \"Administrator\" },\n  { \"username\": \"owner\", \"password\": \"owner123\", \"name\": \"Owner\" }\n]\n\nRefresh halaman setelah file diubah.');
+}
 
 // Close modal clicking outside
 document.getElementById('login-modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
