@@ -49,7 +49,6 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:20px}
 .card h3{font-size:11px;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
 .card .val{font-size:22px;font-weight:700}
-.card .subtext{font-size:10px;color:var(--text3);margin-top:4px}
 
 .rekap-container {display: flex; flex-direction: column; gap: 10px;}
 .seller-accordion {border: 1px solid var(--border); border-radius: var(--rs); background: var(--bg2); overflow: hidden;}
@@ -58,14 +57,22 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
 .seller-accordion.active .seller-content {display: block;}
 
 .hidden{display:none}
-.status-badge{padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700}
-.sync-item{display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--bg3);border-radius:var(--rs);margin-bottom:6px;font-size:12px}
 .loading-spinner { border: 2px solid rgba(255,255,255,0.1); border-left-color: var(--accent); border-radius: 50%; width: 14px; height: 14px; animation: spin 1s linear infinite; display: inline-block; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.yearly-grid {display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:15px; margin-top:20px}
-.yearly-card {background:var(--bg3); border:1px solid var(--border); border-radius:var(--r); padding:15px; text-align:center}
-.yearly-card h4 {font-size:16px; color:var(--accent2); margin-bottom:10px}
+/* CSS BARU UNTUK REKAP TAHUNAN & BULANAN */
+.yearly-stack {display: flex; flex-direction: column; gap: 20px; margin-top: 10px;}
+.year-block {background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden;}
+.year-header {background: rgba(255,255,255,0.03); padding: 12px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;}
+.year-header h4 {font-size: 18px; color: var(--accent2); font-weight: 800;}
+.year-header .total-label {font-size: 14px; font-weight: 700; color: var(--text);}
+
+.monthly-grid {display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; padding: 15px;}
+.month-card {background: var(--bg2); border: 1px solid var(--border); border-radius: var(--rs); padding: 12px; text-align: center; transition: 0.2s;}
+.month-card:hover {border-color: var(--accent2); transform: translateY(-2px);}
+.month-card .m-name {font-size: 11px; color: var(--text3); text-transform: uppercase; margin-bottom: 4px; font-weight: 700;}
+.month-card .m-val {font-size: 14px; font-weight: 700; color: var(--text);}
+
 </style>
 </head>
 <body>
@@ -92,21 +99,21 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
       <div class="card"><h3>Net Owner (Total)</h3><div class="val" id="stat-net" style="color:var(--accent2)">Rp 0</div></div>
     </div>
 
-    <!-- REKAP TAHUNAN SECTION -->
+    <!-- REKAP TAHUNAN & BULANAN SECTION -->
     <div class="panel" style="margin-top:20px">
-      <h2>📅 Rekap Tahunan (Net Owner)</h2>
-      <div id="yearly-rekap-container" class="yearly-grid">
-         <p style="font-size:12px; color:var(--text3)">Belum ada data tahunan.</p>
+      <h2>📅 Rekap Berkala (Net Profit)</h2>
+      <div id="yearly-rekap-container" class="yearly-stack">
+         <p style="font-size:12px; color:var(--text3); padding:20px">Menunggu sinkronisasi data...</p>
       </div>
     </div>
 
     <div class="panel" style="margin-top:20px">
        <h2>📈 Tren Grafik Profit</h2>
-       <div style="height:320px"><canvas id="chartRevenue"></canvas></div>
+       <div style="height:250px"><canvas id="chartRevenue"></canvas></div>
     </div>
   </div>
 
-  <!-- REKAP -->
+  <!-- REKAP KOMISI -->
   <div id="tab-rekap" class="hidden">
     <div class="panel">
       <h2>💰 Rekap Komisi Penjual</h2>
@@ -132,7 +139,7 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
     </div>
   </div>
 
-  <!-- DATA -->
+  <!-- DATA HISTORY -->
   <div id="tab-data" class="hidden">
     <div class="panel">
       <h2>📊 Semua Transaksi</h2>
@@ -145,42 +152,17 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
     </div>
   </div>
 
-  <!-- GITHUB SYNC (IMPORT) -->
+  <!-- GITHUB SYNC -->
   <div id="tab-import" class="hidden">
     <div class="panel">
-      <h2>🌐 GitHub Real-Time Auto Detect</h2>
-      <p style="font-size:12px; color:var(--text3); margin-bottom:20px">Masukkan detail repository GitHub tempat Anda menyimpan folder <b>DATA MASTER</b>.</p>
-      
-      <div class="grid-cols" style="margin-bottom:20px">
-        <div class="input-group">
-          <label>GitHub Username</label>
-          <input type="text" id="gh-user" class="input-main" placeholder="contoh: budi_user" onchange="saveGhConfig()">
-        </div>
-        <div class="input-group">
-          <label>Nama Repository</label>
-          <input type="text" id="gh-repo" class="input-main" placeholder="contoh: mikmon-data" onchange="saveGhConfig()">
-        </div>
+      <h2>🌐 GitHub Sync</h2>
+      <div class="grid-cols">
+        <div class="input-group"><label>Username</label><input type="text" id="gh-user" class="input-main" onchange="saveGhConfig()"></div>
+        <div class="input-group"><label>Repo</label><input type="text" id="gh-repo" class="input-main" onchange="saveGhConfig()"></div>
       </div>
-      
-      <div class="input-group">
-        <label>Path Folder (Default: DATA MASTER)</label>
-        <input type="text" id="gh-path" class="input-main" placeholder="DATA MASTER" onchange="saveGhConfig()">
-      </div>
-
-      <div style="margin-top:20px; padding:20px; background:rgba(16,185,129,0.05); border-radius:var(--r); border:1px solid rgba(16,185,129,0.2)">
-        <div style="display:flex; justify-content:space-between; align-items:center">
-          <div>
-            <h4 style="color:var(--green)">Auto Sync Status</h4>
-            <p id="sync-status-text" style="font-size:11px; color:var(--text3)">Belum terhubung ke GitHub.</p>
-          </div>
-          <button class="btn btn-refresh" id="btn-sync-main" onclick="syncFromGitHub()">Sync Sekarang</button>
-        </div>
-      </div>
-
-      <div style="margin-top:24px">
-        <h3 style="font-size:13px; margin-bottom:12px; color:var(--text2)">File Terdeteksi di GitHub:</h3>
-        <div id="github-file-list"></div>
-      </div>
+      <div class="input-group"><label>Path Folder</label><input type="text" id="gh-path" class="input-main" onchange="saveGhConfig()"></div>
+      <div id="sync-status-text" style="font-size:12px; color:var(--text3); margin-top:10px">Status: Siap sync.</div>
+      <div id="github-file-list" style="margin-top:15px"></div>
     </div>
   </div>
 </div>
@@ -195,6 +177,8 @@ const state = {
   isSyncing: false
 }
 
+const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
 window.onload = () => {
   const sm = localStorage.getItem('mk_master');
   const sc = localStorage.getItem('mk_comm');
@@ -206,7 +190,6 @@ window.onload = () => {
   if(sr) state.reports = JSON.parse(sr);
   if(sgh) state.gh = JSON.parse(sgh);
 
-  // Fill Inputs
   document.getElementById('gh-user').value = state.gh.user || '';
   document.getElementById('gh-repo').value = state.gh.repo || '';
   document.getElementById('gh-path').value = state.gh.path || 'DATA MASTER';
@@ -225,50 +208,24 @@ function saveGhConfig() {
 }
 
 async function syncFromGitHub() {
-  if(!state.gh.user || !state.gh.repo) {
-    alert("Mohon isi konfigurasi GitHub di tab Sync terlebih dahulu.");
-    switchTab('import');
-    return;
-  }
-
+  if(!state.gh.user || !state.gh.repo) return;
   if(state.isSyncing) return;
   state.isSyncing = true;
   toggleSyncBtn(true);
 
-  const statusText = document.getElementById('sync-status-text');
-  const fileListContainer = document.getElementById('github-file-list');
-  statusText.innerText = "Menghubungi GitHub...";
-
   try {
     const apiUrl = `https://api.github.com/repos/${state.gh.user}/${state.gh.repo}/contents/${encodeURIComponent(state.gh.path)}`;
     const response = await fetch(apiUrl);
-    
-    if(!response.ok) throw new Error("Repo atau Folder tidak ditemukan.");
+    if(!response.ok) throw new Error("Repo tidak ditemukan.");
     
     const contents = await response.json();
     const excelFiles = contents.filter(f => f.name.endsWith('.xlsx') || f.name.endsWith('.xls'));
-    
-    if(excelFiles.length === 0) {
-        statusText.innerText = "Folder ditemukan, tapi tidak ada file Excel.";
-        state.isSyncing = false;
-        toggleSyncBtn(false);
-        return;
-    }
-
-    fileListContainer.innerHTML = excelFiles.map(f => `
-        <div class="sync-item">
-            <span>📄 ${f.name}</span>
-            <span class="loading-spinner" id="spin-${f.sha.substring(0,8)}"></span>
-        </div>
-    `).join('');
-
     const newReports = [];
 
     for(const file of excelFiles) {
         const fileRes = await fetch(file.download_url);
         const arrayBuffer = await fileRes.arrayBuffer();
-        const data = new Uint8Array(arrayBuffer);
-        const wb = XLSX.read(data, {type: 'array'});
+        const wb = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
         const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
         
         const processed = raw.map(r => {
@@ -280,70 +237,41 @@ async function syncFromGitHub() {
                 ds = pts.slice(1).join('-').trim(); 
             }
 
-            let finalDate = r.Date;
-            let year = null;
+            let dVal = r.Date;
+            let year = null, month = null;
             
-            // Extract Year for Yearly Rekap
-            if(typeof finalDate === 'number') {
-                const dateObj = new Date((finalDate - 25569) * 86400 * 1000);
+            if(typeof dVal === 'number') {
+                const dateObj = new Date((dVal - 25569) * 86400 * 1000);
                 year = dateObj.getFullYear();
-                finalDate = fmtDate(finalDate);
-            } else if(typeof finalDate === 'string') {
-                // Try extract year from string YYYY-MM-DD or DD/MM/YYYY
-                const match = finalDate.match(/\d{4}/);
-                if(match) year = parseInt(match[0]);
+                month = dateObj.getMonth();
+                dVal = fmtDate(dVal);
+            } else if(typeof dVal === 'string') {
+                // Parsing manual sederhana untuk string "YYYY-MM-DD"
+                const parts = dVal.split(/[-/]/);
+                if(parts.length >= 3) {
+                   if(parts[0].length === 4) { year = parseInt(parts[0]); month = parseInt(parts[1])-1; }
+                   else { year = parseInt(parts[2]); month = parseInt(parts[1])-1; }
+                }
             }
 
-            return { 
-                date: finalDate,
-                year: year,
-                sellerRaw: ds, 
-                pkgRaw: dp, 
-                price: parseFloat(r.Price || r.Harga || 0), 
-                isMatch: false 
-            }
+            return { date: dVal, year, month, sellerRaw: ds, pkgRaw: dp, price: parseFloat(r.Price || r.Harga || 0), isMatch: false };
         });
-
         newReports.push({ id: file.sha, name: file.name, rows: processed });
-        const spinner = document.getElementById(`spin-${file.sha.substring(0,8)}`);
-        if(spinner) spinner.outerHTML = '<span style="color:var(--green)">✅</span>';
     }
 
     state.reports = newReports;
     runReMatching();
     saveData();
     updateUI();
-    statusText.innerText = `Terakhir Update: ${new Date().toLocaleTimeString()} (${excelFiles.length} File)`;
-
-  } catch (err) {
-    alert("Gagal Sync: " + err.message);
-    statusText.innerText = "Gagal sinkronisasi.";
-  } finally {
-    state.isSyncing = false;
-    toggleSyncBtn(false);
-  }
+  } catch (err) { console.error(err); } 
+  finally { state.isSyncing = false; toggleSyncBtn(false); }
 }
 
 function toggleSyncBtn(loading) {
     const b1 = document.getElementById('btn-sync-top');
-    const b2 = document.getElementById('btn-sync-main');
-    if(!b1 || !b2) return;
-    if(loading) {
-        b1.disabled = b2.disabled = true;
-        b1.innerHTML = b2.innerHTML = '<span class="loading-spinner"></span> Syncing...';
-    } else {
-        b1.disabled = b2.disabled = false;
-        b1.innerText = b2.innerText = '🔄 Sync Sekarang';
-    }
-}
-
-function switchTab(id) {
-  document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.add('hidden'));
-  document.getElementById('tab-' + id).classList.remove('hidden');
-  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
-  document.getElementById('nav-' + id).classList.add('active');
-  if(id === 'settings') { renderMasterLists(); renderCommissionEditor(); }
-  if(id === 'rekap') renderRekap();
+    if(!b1) return;
+    b1.disabled = loading;
+    b1.innerHTML = loading ? '<span class="loading-spinner"></span> Syncing...' : '🔄 Sync Sekarang';
 }
 
 function runReMatching() {
@@ -360,8 +288,69 @@ function calculateRowCommission(row) {
     const config = (state.commissions[s] && state.commissions[s][p]) ? state.commissions[s][p] : { seller: { value: 0 }, staff: { value: 0 } };
     const sellerComm = config.seller.value || 0;
     const staffComm = config.staff.value || 0;
-    const finalOwner = row.price - staffComm;
-    return { sellerComm, staffComm, finalOwner: Math.max(0, finalOwner) };
+    return { sellerComm, staffComm, finalOwner: Math.max(0, row.price - staffComm) };
+}
+
+function updateUI() {
+  const allRows = state.reports.flatMap(r => r.rows);
+  const matchedRows = allRows.filter(r => r.isMatch);
+  
+  let totalRev = allRows.reduce((a,b)=>a+b.price, 0), tS = 0, tSt = 0, tO = 0;
+  
+  // Data Struktur: tree[year][month] = value
+  const tree = {};
+
+  matchedRows.forEach(row => {
+    const { sellerComm, staffComm, finalOwner } = calculateRowCommission(row);
+    tS += sellerComm; tSt += staffComm; tO += finalOwner;
+    
+    if(row.year !== null && row.month !== null) {
+        if(!tree[row.year]) tree[row.year] = {};
+        if(!tree[row.year][row.month]) tree[row.year][row.month] = 0;
+        tree[row.year][row.month] += finalOwner;
+    }
+  });
+
+  document.getElementById('stat-rev').innerText = 'Rp ' + fmt(totalRev);
+  document.getElementById('stat-comm').innerText = 'Rp ' + fmt(Math.round(tS));
+  document.getElementById('stat-staff').innerText = 'Rp ' + fmt(Math.round(tSt));
+  document.getElementById('stat-net').innerText = 'Rp ' + fmt(Math.round(tO));
+  
+  // Render Yearly & Monthly Stacks
+  const container = document.getElementById('yearly-rekap-container');
+  const years = Object.keys(tree).sort((a,b) => b-a);
+  
+  if(years.length > 0) {
+      container.innerHTML = years.map(y => {
+          const months = Object.keys(tree[y]).sort((a,b) => a-b);
+          const totalYear = Object.values(tree[y]).reduce((a,b) => a+b, 0);
+          
+          return `
+            <div class="year-block">
+                <div class="year-header">
+                    <h4>${y}</h4>
+                    <div class="total-label">Total Net: Rp ${fmt(Math.round(totalYear))}</div>
+                </div>
+                <div class="monthly-grid">
+                    ${months.map(m => `
+                        <div class="month-card">
+                            <div class="m-name">${monthNames[m]}</div>
+                            <div class="m-val">Rp ${fmt(Math.round(tree[y][m]))}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+          `;
+      }).join('');
+  } else {
+      container.innerHTML = `<p style="font-size:12px; color:var(--text3); padding:20px">Tidak ada data tahunan/bulanan terdeteksi.</p>`;
+  }
+
+  document.getElementById('table-body').innerHTML = allRows.slice(0,50).map(r => `
+    <tr><td>${r.date || '-'}</td><td>${r.pkgRaw}</td><td>${r.sellerRaw}</td><td>Rp ${fmt(r.price)}</td><td><span style="color:${r.isMatch?'var(--green)':'var(--red)'}">${r.isMatch?'OK':'MIS'}</span></td></tr>
+  `).join('');
+  
+  renderChart();
 }
 
 function renderRekap() {
@@ -369,22 +358,17 @@ function renderRekap() {
   const dataMap = {}; 
   state.reports.forEach(report => {
     report.rows.filter(r => r.isMatch).forEach(row => {
-      const s = row.sellerRaw, f = report.name, p = row.pkgRaw;
-      const { sellerComm, staffComm, finalOwner } = calculateRowCommission(row);
+      const s = row.sellerRaw, f = report.name;
+      const { sellerComm, finalOwner } = calculateRowCommission(row);
       if (!dataMap[s]) dataMap[s] = { files: {}, totalS: 0, totalO: 0 };
-      if (!dataMap[s].files[f]) dataMap[s].files[f] = { items: {}, fS: 0, fO: 0, fQty: 0 };
-      if (!dataMap[s].files[f].items[p]) dataMap[s].files[f].items[p] = 0;
-      dataMap[s].files[f].items[p]++;
-      dataMap[s].files[f].fS += sellerComm;
+      if (!dataMap[s].files[f]) dataMap[s].files[f] = { fO: 0 };
       dataMap[s].files[f].fO += finalOwner;
-      dataMap[s].files[f].fQty++;
       dataMap[s].totalS += sellerComm;
       dataMap[s].totalO += finalOwner;
     });
   });
 
   const sellers = Object.keys(dataMap).sort();
-  if(!sellers.length) { container.innerHTML = 'Data Kosong'; return; }
   container.innerHTML = sellers.map(sName => `
     <div class="seller-accordion">
       <button class="seller-trigger" onclick="this.parentElement.classList.toggle('active')">
@@ -396,60 +380,20 @@ function renderRekap() {
       </button>
       <div class="seller-content">
         <table style="width:100%; font-size:11px">
-           ${Object.keys(dataMap[sName].files).map(f => `
-             <tr><td style="padding:8px">${f}</td><td style="text-align:right">Rp ${fmt(Math.round(dataMap[sName].files[f].fO))}</td></tr>
-           `).join('')}
+           ${Object.keys(dataMap[sName].files).map(f => `<tr><td style="padding:8px">${f}</td><td style="text-align:right; padding:8px">Rp ${fmt(Math.round(dataMap[sName].files[f].fO))}</td></tr>`).join('')}
         </table>
       </div>
     </div>
   `).join('');
 }
 
-function updateUI() {
-  const allRows = state.reports.flatMap(r => r.rows);
-  const matchedRows = allRows.filter(r => r.isMatch);
-  
-  let totalRev = allRows.reduce((a,b)=>a+b.price, 0), tS = 0, tSt = 0, tO = 0;
-  const yearlyData = {};
-
-  matchedRows.forEach(row => {
-    const { sellerComm, staffComm, finalOwner } = calculateRowCommission(row);
-    tS += sellerComm; tSt += staffComm; tO += finalOwner;
-    
-    // Group by Year
-    if(row.year) {
-        if(!yearlyData[row.year]) yearlyData[row.year] = 0;
-        yearlyData[row.year] += finalOwner;
-    }
-  });
-
-  // Update Stats
-  document.getElementById('stat-rev').innerText = 'Rp ' + fmt(totalRev);
-  document.getElementById('stat-comm').innerText = 'Rp ' + fmt(Math.round(tS));
-  document.getElementById('stat-staff').innerText = 'Rp ' + fmt(Math.round(tSt));
-  document.getElementById('stat-net').innerText = 'Rp ' + fmt(Math.round(tO));
-  
-  // Render Yearly Cards
-  const yearlyContainer = document.getElementById('yearly-rekap-container');
-  const years = Object.keys(yearlyData).sort((a,b) => b-a);
-  if(years.length > 0) {
-      yearlyContainer.innerHTML = years.map(y => `
-        <div class="yearly-card">
-            <h4>Tahun ${y}</h4>
-            <div style="font-weight:700; font-size:18px">Rp ${fmt(Math.round(yearlyData[y]))}</div>
-            <div style="font-size:10px; color:var(--text3); margin-top:4px">Profit Bersih (Net)</div>
-        </div>
-      `).join('');
-  } else {
-      yearlyContainer.innerHTML = `<p style="font-size:12px; color:var(--text3)">Belum ada data tahunan yang terdeteksi.</p>`;
-  }
-
-  // Update History Table
-  document.getElementById('table-body').innerHTML = allRows.slice(0,100).map(r => `
-    <tr><td>${r.date || '-'}</td><td>${r.pkgRaw}</td><td>${r.sellerRaw}</td><td>Rp ${fmt(r.price)}</td><td><span class="status-badge ${r.isMatch?'badge-green':'badge-red'}" style="background:${r.isMatch?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.1)'}; color:${r.isMatch?'var(--green)':'var(--red)'}">${r.isMatch?'OK':'MIS'}</span></td></tr>
-  `).join('');
-  
-  renderChart();
+function switchTab(id) {
+  document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.add('hidden'));
+  document.getElementById('tab-' + id).classList.remove('hidden');
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('nav-' + id).classList.add('active');
+  if(id === 'settings') { renderMasterLists(); renderCommissionEditor(); }
+  if(id === 'rekap') renderRekap();
 }
 
 function addMaster(type, inputId) {
@@ -463,11 +407,7 @@ function addMaster(type, inputId) {
 function renderMasterLists() {
   ['sellers', 'packages'].forEach(t => {
     const listEl = document.getElementById('list-'+t);
-    if(listEl) {
-        listEl.innerHTML = state.master[t].map(i => `
-          <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:12px; background:var(--bg3); padding:6px; border-radius:4px"><span>${i}</span><button onclick="removeMaster('${t}','${i}')" style="background:none; border:none; color:var(--red); cursor:pointer">X</button></div>
-        `).join('');
-    }
+    if(listEl) listEl.innerHTML = state.master[t].map(i => `<div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:12px; background:var(--bg3); padding:6px; border-radius:4px"><span>${i}</span><button onclick="removeMaster('${t}','${i}')" style="background:none; border:none; color:var(--red); cursor:pointer">X</button></div>`).join('');
   });
 }
 
@@ -480,17 +420,14 @@ function renderCommissionEditor() {
     <div style="background:var(--bg3); padding:10px; border-radius:var(--rs); margin-bottom:8px">
       <div style="font-weight:700; font-size:12px; margin-bottom:8px">${s}</div>
       ${state.master.packages.map(p => {
-        const config = (state.commissions[s] && state.commissions[s][p]) ? state.commissions[s][p] : { seller:{value:0}, staff:{value:0} };
-        return `
-          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; margin-bottom:4px">
+        const cfg = (state.commissions[s] && state.commissions[s][p]) ? state.commissions[s][p] : { seller:{value:0}, staff:{value:0} };
+        return `<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; margin-bottom:4px">
             <span style="font-size:10px">${p}</span>
-            <input type="number" class="input-main c-s" data-s="${s}" data-p="${p}" value="${config.seller.value}" style="padding:2px; height:22px">
-            <input type="number" class="input-main c-st" data-s="${s}" data-p="${p}" value="${config.staff.value}" style="padding:2px; height:22px">
-          </div>
-        `;
+            <input type="number" class="input-main c-s" data-s="${s}" data-p="${p}" value="${cfg.seller.value}" placeholder="S" style="padding:2px; height:22px">
+            <input type="number" class="input-main c-st" data-s="${s}" data-p="${p}" value="${cfg.staff.value}" placeholder="St" style="padding:2px; height:22px">
+          </div>`;
       }).join('')}
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
 function saveCommissions() {
@@ -508,7 +445,7 @@ function renderChart() {
   if(!canvas) return;
   const ctx = canvas.getContext('2d');
   if(state.chart) state.chart.destroy();
-  state.chart = new Chart(ctx, { type: 'line', data: { labels: state.reports.map(r=>r.name.split('.')[0]), datasets: [{ label: 'Owner Profit', data: state.reports.map(r=>r.rows.reduce((acc,row)=>acc+calculateRowCommission(row).finalOwner,0)), borderColor: '#3b82f6', tension: 0.3 }] }, options: { responsive:true, maintainAspectRatio:false } });
+  state.chart = new Chart(ctx, { type: 'line', data: { labels: state.reports.map(r=>r.name.replace('.xlsx','')), datasets: [{ label: 'Profit Bersih', data: state.reports.map(r=>r.rows.reduce((acc,row)=>acc+(row.isMatch?calculateRowCommission(row).finalOwner:0),0)), borderColor: '#3b82f6', tension: 0.3, fill:true, backgroundColor: 'rgba(59,130,246,0.1)' }] }, options: { responsive:true, maintainAspectRatio:false, scales:{ y:{beginAtZero:true, grid:{color:'rgba(255,255,255,0.05)'}}, x:{grid:{display:false}} }, plugins:{legend:{display:false}} } });
 }
 
 function saveData() {
