@@ -572,7 +572,7 @@ async function loadConfig(){
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
 let isAdmin = false;
 const FORCE_ADMIN_PREVIEW = false;
-function hasAdminAccess(){ return false; /* Mode Admin dinonaktifkan sementara */ }
+function hasAdminAccess(){ return isAdmin || FORCE_ADMIN_PREVIEW; }
 
 function handleAuthClick() { if(!hasAdminAccess()) openModal(); }
 
