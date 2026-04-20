@@ -4,28 +4,30 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LINK.NET</title>
+<link rel="icon" type="image/png" href="./Gambar/LOGO_linknet.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#0f1117;--bg2:#161b27;--bg3:#1e2535;--surface:#242d3f;
   --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
   --text:#e8ecf4;--text2:#8b95a8;--text3:#5a6478;
-  --accent:#3b82f6;--accent2:#60a5fa;
+  --accent:#9333ea;--accent2:#ec4899;
   --cyan:#22d3ee;--rose:#fb7185;
   --green:#10b981;--amber:#f59e0b;--red:#ef4444;--purple:#a855f7;
   --r:10px;--rs:6px;
 }
 body{background:
-  radial-gradient(circle at top left, rgba(34,211,238,0.13), transparent 28%),
-  radial-gradient(circle at top right, rgba(59,130,246,0.16), transparent 24%),
-  linear-gradient(180deg, #0a0d14 0%, #0f1117 42%, #121826 100%);
-color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.5;min-height:100vh;overflow-x:hidden}
-.app{max-width:1240px;margin:0 auto;padding:24px;display:flex;flex-direction:column;gap:24px}
+  radial-gradient(circle at top left, rgba(147,51,234,0.1), transparent 40%),
+  radial-gradient(circle at top right, rgba(236,72,153,0.12), transparent 40%),
+  linear-gradient(180deg, #09090b 0%, #111115 42%, #0a0a0c 100%);
+color:var(--text);font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.5;min-height:100vh;overflow-x:hidden}
+.app{max-width:1300px;margin:0 auto;padding:32px 24px;display:flex;flex-direction:column;gap:24px}
 header{display:flex;justify-content:space-between;align-items:center;gap:16px;padding-bottom:12px;border-bottom:1px solid var(--border)}
 .logo{font-size:20px;font-weight:700;display:flex;align-items:center;gap:10px}
-.logo span{background:var(--accent);color:#fff;padding:4px 8px;border-radius:6px;font-size:14px}
+.logo span{background:var(--accent);color:#fff;padding:4px 10px;border-radius:7px;font-size:12px;font-weight:700;letter-spacing:.03em}
 .nav{display:flex;gap:4px;flex-wrap:wrap;background:var(--bg2);padding:4px;border-radius:var(--r);border:1px solid var(--border)}
 .nav button{background:transparent;border:none;color:var(--text2);padding:8px 16px;border-radius:var(--rs);cursor:pointer;font-weight:500;font-size:13px;transition:0.2s;white-space:nowrap}
 .nav button.active{background:var(--surface);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,0.2)}
@@ -41,60 +43,70 @@ header{display:flex;justify-content:space-between;align-items:center;gap:16px;pa
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:20px}
 .card h3{font-size:11px;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
 .card .val{font-size:22px;font-weight:700}
-.hero-panel{position:relative;overflow:hidden;padding:28px;border-radius:24px;background:
-  linear-gradient(135deg, rgba(14,165,233,0.18), rgba(59,130,246,0.08) 34%, rgba(168,85,247,0.12) 100%),
-  rgba(15,23,42,0.9);
+.hero-panel{position:relative;overflow:hidden;padding:32px;border-radius:24px;background:
+  linear-gradient(135deg, rgba(147,51,234,0.15), rgba(236,72,153,0.05) 100%);
+  backdrop-filter:blur(16px);
   border:1px solid rgba(255,255,255,0.08);
-  box-shadow:0 30px 80px rgba(0,0,0,0.32)}
-.hero-panel::before{content:'';position:absolute;inset:auto -10% -45% auto;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle, rgba(96,165,250,0.28), transparent 70%)}
-.hero-grid{position:relative;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,0.9fr);gap:22px;align-items:stretch}
+  box-shadow:0 24px 40px -12px rgba(0,0,0,0.5)}
+.hero-panel::before{content:'';position:absolute;inset:-20% -10% auto auto;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle, rgba(147,51,234,0.15), transparent 60%);pointer-events:none}
+.hero-grid{position:relative;display:grid;grid-template-columns:1.5fr 1fr;gap:32px;align-items:center}
 .hero-copy{display:flex;flex-direction:column;gap:16px}
 .eyebrow{display:inline-flex;align-items:center;gap:8px;width:max-content;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent2)}
-.hero-title{font-size:clamp(28px,4vw,42px);line-height:1.06;font-weight:800;max-width:10ch}
-.hero-title span{display:block;color:#9bd4ff}
-.hero-sub{max-width:58ch;color:#b8c2d9;font-size:14px}
+.hero-title{font-size:clamp(30px,4vw,44px);line-height:1.05;font-weight:800;max-width:10ch;letter-spacing:-.02em}
+.hero-title span{display:block;color:#c0e0ff}
+.hero-sub{max-width:58ch;color:#cfdaec;font-size:14px}
 .hero-actions{display:flex;gap:10px;flex-wrap:wrap}
 .hero-actions .btn{min-height:40px}
 .hero-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-.hero-chip{padding:12px 14px;border-radius:16px;background:rgba(7,12,22,0.38);border:1px solid rgba(255,255,255,0.06)}
-.hero-chip span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:4px}
-.hero-chip strong{font-size:15px}
+.hero-chip{padding:12px 14px;border-radius:14px;background:rgba(8,14,24,0.56);border:1px solid rgba(255,255,255,0.08)}
+.hero-chip span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#bdc8dc;margin-bottom:4px}
+.hero-chip strong{font-size:16px;color:#f4f8ff}
 .hero-side{display:flex;flex-direction:column;gap:12px}
-.spotlight-card{padding:18px;border-radius:20px;background:linear-gradient(180deg, rgba(9,14,24,0.88), rgba(19,28,43,0.72));border:1px solid rgba(255,255,255,0.08);min-height:100%}
-.spotlight-card h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:12px}
-.spotlight-main{font-size:30px;font-weight:800;line-height:1}
-.spotlight-label{margin-top:8px;color:#b8c2d9;font-size:13px}
+.spotlight-card{padding:24px;border-radius:20px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);min-height:100%;backdrop-filter:blur(10px)}
+.spotlight-card h3{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);margin-bottom:16px}
+.spotlight-main{font-size:34px;font-weight:800;line-height:1;letter-spacing:-.02em}
+.spotlight-label{margin-top:8px;color:#d2dceb;font-size:13px}
 .mini-trend{margin-top:18px;display:flex;flex-direction:column;gap:10px}
 .mini-trend-row{display:grid;grid-template-columns:96px 1fr auto;gap:10px;align-items:center;font-size:12px}
-.mini-trend-row span{color:var(--text2)}
-.mini-bar{height:8px;border-radius:999px;background:rgba(255,255,255,0.07);overflow:hidden}
+.mini-trend-row span{color:#d2d9e7}
+.mini-trend-row strong{color:#f3f7ff}
+.mini-bar{height:7px;border-radius:999px;background:rgba(255,255,255,0.08);overflow:hidden}
 .mini-bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg, var(--cyan), var(--accent2))}
-.dashboard-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:18px}
-.metric-card{grid-column:span 3;position:relative;overflow:hidden;padding:20px 18px;border-radius:22px;background:linear-gradient(180deg, rgba(17,24,39,0.96), rgba(21,31,48,0.9));border:1px solid rgba(255,255,255,0.07);box-shadow:0 14px 34px rgba(0,0,0,0.22)}
-.metric-card::after{content:'';position:absolute;top:-40px;right:-30px;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle, var(--metric-glow), transparent 70%);opacity:.28}
+.dashboard-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:24px}
+.metric-card{grid-column:span 4;position:relative;overflow:hidden;padding:24px;border-radius:24px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);backdrop-filter:blur(16px);transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
+.metric-card:hover{transform:translateY(-4px);background:rgba(255,255,255,0.03);border-color:rgba(255,255,255,0.1);box-shadow:0 20px 40px -12px rgba(0,0,0,0.5)}
+.metric-card::after{content:'';position:absolute;top:-48px;right:-34px;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle, var(--metric-glow), transparent 70%);opacity:.1}
 .metric-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-.metric-card h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:10px}
-.metric-card .val{font-size:28px;font-weight:800;letter-spacing:-0.03em}
-.metric-note{margin-top:10px;font-size:12px;color:#b3bdd2}
-.metric-icon{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);font-size:18px}
-.metric-revenue{--metric-glow:rgba(96,165,250,0.9)}
+.metric-card h3{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:12px;font-weight:600}
+.metric-card .val{font-size:36px;font-weight:800;letter-spacing:-0.03em;color:#fff}
+.metric-note{margin-top:16px;font-size:13px;color:var(--text3)}
+.metric-icon{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);font-size:18px;color:#fff}
+.metric-revenue{--metric-glow:rgba(147,51,234,0.9)}
 .metric-seller{--metric-glow:rgba(16,185,129,0.9)}
-.metric-staff{--metric-glow:rgba(168,85,247,0.9)}
-.metric-net{--metric-glow:rgba(34,211,238,0.9)}
-.chart-panel{grid-column:span 8;margin-bottom:0;border-radius:24px;background:linear-gradient(180deg, rgba(16,22,34,0.96), rgba(20,28,43,0.88))}
-.chart-panel h2,.insight-panel h2{margin-bottom:4px}
-.panel-sub{font-size:12px;color:var(--text3);margin-bottom:16px}
-.chart-shell{height:310px}
-.chart-frame{position:relative;height:100%;padding:14px 14px 10px;border-radius:22px;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.05)}
-.chart-overlay-label{position:absolute;left:22px;top:18px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:rgba(232,236,244,0.5);pointer-events:none}
-.chart-footer-note{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:11px;color:var(--text3);gap:12px;flex-wrap:wrap}
-.chart-legend-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg, var(--cyan), var(--accent2));margin-right:8px;box-shadow:0 0 14px rgba(34,211,238,0.35)}
-.insight-panel{grid-column:span 4;margin-bottom:0;border-radius:24px;background:linear-gradient(180deg, rgba(17,24,39,0.96), rgba(21,31,48,0.88))}
-.insight-list{display:flex;flex-direction:column;gap:12px}
-.insight-item{padding:14px 16px;border-radius:18px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06)}
-.insight-kicker{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
-.insight-item strong{display:block;font-size:15px;margin-bottom:6px}
-.insight-item span{font-size:12px;color:#b3bdd2;line-height:1.6}
+.metric-staff{--metric-glow:rgba(244,63,94,0.9)}
+.metric-net{--metric-glow:rgba(236,72,153,0.9)}
+.chart-panel{grid-column:span 8;margin-bottom:0;border-radius:24px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);backdrop-filter:blur(16px);padding:24px}
+.chart-panel h2,.seller-panel h2,.insight-panel h2{margin-bottom:8px;font-size:18px;font-weight:700}
+.panel-sub{font-size:13px;color:var(--text3);margin-bottom:24px}
+.chart-shell{height:340px}
+.chart-frame{position:relative;height:100%;padding:16px 16px 12px;border-radius:16px;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.03)}
+.chart-overlay-label{position:absolute;left:24px;top:24px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);pointer-events:none;font-weight:600}
+.chart-footer-note{display:flex;justify-content:space-between;align-items:center;margin-top:16px;font-size:12px;color:var(--text2);gap:12px;flex-wrap:wrap}
+.chart-legend-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg, var(--cyan), var(--accent2));margin-right:8px;box-shadow:0 0 10px rgba(34,211,238,0.4)}
+.seller-panel{grid-column:span 4;margin-bottom:0;border-radius:24px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);backdrop-filter:blur(16px);padding:24px}
+.seller-voucher-list{display:flex;flex-direction:column;gap:12px;max-height:340px;overflow:auto;padding-right:4px}
+.seller-voucher-row{display:grid;grid-template-columns:32px 1fr auto;gap:12px;align-items:center;padding:12px 16px;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);transition:all 0.2s}
+.seller-voucher-row:hover{background:rgba(255,255,255,0.04);transform:translateX(4px)}
+.seller-rank{font-size:12px;font-weight:800;color:var(--text3);background:rgba(255,255,255,0.05);width:24px;height:24px;display:grid;place-items:center;border-radius:6px}
+.seller-name{font-size:13px;font-weight:500;color:var(--text)}
+.seller-count{font-size:13px;font-weight:700}
+.seller-voucher-empty{font-size:13px;color:var(--text3);padding:16px;text-align:center;border-radius:14px;background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.1)}
+.insight-panel{grid-column:span 12;margin-bottom:0;border-radius:24px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);backdrop-filter:blur(16px);padding:24px}
+.insight-list{display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:20px}
+.insight-item{padding:20px;border-radius:16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);transition:transform 0.2s}
+.insight-kicker{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:#bfcbde;margin-bottom:6px}
+.insight-item strong{display:block;font-size:15px;margin-bottom:6px;color:#f0f5ff}
+.insight-item span{font-size:12px;color:#cbd6e7;line-height:1.6}
 .table-wrap{overflow-x:auto;max-height:560px;border-radius:var(--rs);border:1px solid var(--border)}
 table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px}
 th{text-align:left;color:var(--text);font-weight:700;padding:10px 12px;border-bottom:2px solid var(--border);background:var(--bg3);position:sticky;top:0;z-index:1}
@@ -102,48 +114,54 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
 
 /* REKAP */
 .yearly-stack{display:flex;flex-direction:column;gap:20px;margin-top:10px}
-.year-block{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
-.year-header{background:rgba(255,255,255,0.03);padding:12px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
-.year-header h4{font-size:18px;color:var(--accent2);font-weight:800}
-.monthly-list{display:flex;flex-direction:column;gap:1px;background:var(--border)}
-.month-row{background:var(--bg2)}
-.month-trigger{width:100%;background:none;border:none;padding:15px 20px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;color:var(--text);outline:none}
-.month-trigger:hover{background:rgba(255,255,255,0.02)}
-.month-title{display:flex;align-items:center;gap:15px}
-.month-name{font-weight:700;font-size:14px;width:100px;text-align:left}
-.month-summary{display:flex;gap:20px;font-size:12px}
-.month-mini-strip{padding:0 20px 16px;display:flex;gap:10px;flex-wrap:wrap}
-.month-mini-card{min-width:150px;flex:1 1 150px;max-width:220px;padding:12px 14px;border-radius:16px;background:linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.02));border:1px solid rgba(255,255,255,0.06)}
-.month-mini-card strong{display:block;font-size:12px;margin-bottom:8px;color:var(--text)}
-.month-mini-bar{height:8px;border-radius:999px;background:rgba(255,255,255,0.07);overflow:hidden;display:flex}
-.month-mini-bar span{display:block;height:100%}
-.month-mini-bar .seller{background:linear-gradient(90deg, rgba(16,185,129,0.95), rgba(34,211,238,0.88))}
-.month-mini-bar .staff{background:linear-gradient(90deg, rgba(168,85,247,0.95), rgba(244,114,182,0.84))}
-.month-mini-meta{display:flex;justify-content:space-between;gap:8px;margin-top:8px;font-size:10px;color:var(--text3)}
-.month-mini-meta b{font-weight:700}
-.month-mini-meta .seller-amt{color:var(--green)}
-.month-mini-meta .staff-amt{color:var(--purple)}
-.month-details{display:none;padding:15px 20px;background:var(--bg);border-top:1px solid var(--border);font-size:12px}
+.year-block{background:linear-gradient(180deg, rgba(30,37,53,0.94), rgba(22,27,39,0.88));border:1px solid var(--border);border-radius:16px;padding:0 16px 16px;box-shadow:0 18px 42px rgba(0,0,0,0.16)}
+.year-header{padding:16px 4px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.year-header h4{font-size:17px;color:#dbeafe;font-weight:800;letter-spacing:.02em}
+.monthly-list{display:flex;flex-direction:column;gap:12px;padding-top:14px}
+.month-row{background:rgba(15,23,42,0.58);border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;transition:border-color .2s ease, box-shadow .2s ease}
+.month-row:hover{border-color:rgba(168,85,247,0.34)}
+.month-trigger{width:100%;background:none;border:none;padding:16px 18px;display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer;color:var(--text);outline:none;gap:14px}
+.month-title{display:flex;flex-direction:column;gap:10px;flex:1;align-items:flex-start}
+.month-name{font-weight:800;font-size:16px;letter-spacing:.01em;text-align:left;color:#f3f6ff}
+.month-summary{display:flex;gap:10px;flex-wrap:wrap}
+.month-kpi{min-width:138px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;gap:3px}
+.month-kpi span{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#c5cfdf}
+.month-kpi b{font-size:14px;font-weight:800}
+.month-kpi.owner b{color:var(--accent2)}
+.month-kpi.seller b{color:var(--green)}
+.month-kpi.staff b{color:var(--purple)}
+.month-toggle{font-size:10px;color:#c2cee2;letter-spacing:.1em;text-transform:uppercase;padding-top:4px;white-space:nowrap}
+.month-row.active{border-color:rgba(236,72,153,0.45);box-shadow:0 12px 30px rgba(3,8,18,0.35)}
+.month-row.active .month-toggle{color:#f472b6}
+.month-details{display:none;padding:0 18px 18px;background:transparent;font-size:12px}
 .month-row.active .month-details{display:block}
-.month-row.active .month-trigger{background:var(--bg3)}
-.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-.detail-table{width:100%;border-collapse:collapse}
-.detail-table th{background:none;border-bottom:1px solid var(--border);padding:8px 0;color:var(--text3);font-size:10px;text-transform:uppercase;position:static}
-.detail-table td{padding:8px 0;border-bottom:1px dotted var(--border);color:var(--text2)}
-.print-actions{margin-top:15px;padding-top:15px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:10px}
-.seller-print-group{background:rgba(255,255,255,0.03);padding:10px;border-radius:var(--rs);width:100%}
-.seller-print-group p{margin-bottom:10px;font-weight:600;color:var(--text2);font-size:11px}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.detail-card{background:rgba(7,12,22,0.46);border:1px solid rgba(255,255,255,0.06);border-radius:12px;overflow:hidden}
+.detail-card h5{margin:0;padding:10px 12px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#cfd8ea;border-bottom:1px solid rgba(255,255,255,0.07)}
+.detail-card-scroll{max-height:280px;overflow:auto}
+.detail-table{width:100%;border-collapse:separate;border-spacing:0}
+.detail-table th{background:rgba(25,36,56,0.95);border-bottom:1px solid var(--border);padding:9px 12px;color:#d4ddee;font-size:10px;text-transform:uppercase;letter-spacing:.05em;position:sticky;top:0;z-index:2}
+.detail-table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.05);color:#d3dbea}
+.detail-table tbody tr:nth-child(even){background:rgba(255,255,255,0.015)}
+.detail-table th.num,.detail-table td.num{text-align:right}
+.print-actions{margin-top:14px;padding:12px;border:1px solid rgba(255,255,255,0.07);border-radius:12px;background:rgba(7,12,22,0.52);display:flex;flex-direction:column;gap:10px}
+.print-actions-head{font-size:10px;color:#c4cfdf;text-transform:uppercase;letter-spacing:.08em}
+.print-actions-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}
+.seller-print-group{background:rgba(255,255,255,0.03);padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);flex:1 1 320px}
+.seller-print-group p{margin-bottom:10px;font-weight:600;color:#d6ddec;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+.seller-print-list{display:flex;flex-wrap:wrap;gap:8px}
+.print-staff-btn{min-height:34px}
+.public-lock{margin-top:12px;font-size:12px;color:var(--text3);padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px}
 
 /* SENSOR */
-.sensored{filter:blur(5px);user-select:none;pointer-events:none}
-.sensor-txt{background:var(--bg3);border-radius:4px;padding:2px 10px;color:var(--text3);letter-spacing:3px;font-size:11px}
+.sensored{filter:blur(12px);user-select:none;pointer-events:none;opacity:0.6;}
 
 /* AUTH BADGE */
 .auth-badge{display:flex;align-items:center;gap:7px;font-size:12px;padding:6px 13px;border-radius:20px;cursor:pointer;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);transition:.2s;white-space:nowrap}
 .auth-badge:hover{border-color:var(--accent2);color:var(--text)}
-.auth-badge.is-admin{border-color:var(--green);color:var(--green);background:rgba(16,185,129,.08)}
+.auth-badge.is-admin{border-color:var(--accent);color:var(--accent);background:rgba(168,85,247,.08)}
 .auth-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0}
-.auth-badge.is-admin .auth-dot{background:var(--green)}
+.auth-badge.is-admin .auth-dot{background:var(--accent)}
 
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(4px)}
@@ -153,7 +171,7 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
 .mfield{display:flex;flex-direction:column;gap:5px}
 .mfield label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
 .mfield input{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rs);color:var(--text);padding:10px 12px;font-size:14px;outline:none;width:100%;font-family:inherit}
-.mfield input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(59,130,246,.2)}
+.mfield input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(168,85,247,0.2)}
 .modal-err{font-size:12px;color:var(--red);display:none;padding:8px 12px;background:rgba(239,68,68,.08);border-radius:var(--rs)}
 .modal-row{display:flex;gap:8px}
 
@@ -171,7 +189,7 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
 .sfield{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
 .sfield label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
 .sfield input{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rs);color:var(--text);padding:9px 12px;font-size:13px;outline:none;width:100%;font-family:inherit}
-.sfield input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(59,130,246,.2)}
+.sfield input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(168,85,247,0.2)}
 
 .hidden{display:none}
 .loading-spinner{border:2px solid rgba(255,255,255,0.1);border-left-color:var(--accent);border-radius:50%;width:14px;height:14px;animation:spin 1s linear infinite;display:inline-block}
@@ -190,14 +208,14 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
   .nav{width:100%}
   .hero-grid{grid-template-columns:1fr}
   .hero-panel{padding:24px}
-  .metric-card{grid-column:span 6}
-  .chart-panel,.insight-panel{grid-column:span 12}
+  .chart-panel{grid-column:span 12}
+  .seller-panel{grid-column:span 12}
+  .insight-panel{grid-column:span 12}
   .detail-grid{grid-template-columns:1fr}
-  .month-mini-strip{padding:0 14px 14px}
-  .month-mini-card{max-width:none}
-  .month-trigger{align-items:flex-start;gap:12px}
-  .month-title{flex-direction:column;align-items:flex-start;gap:8px}
-  .month-summary{flex-wrap:wrap;gap:10px}
+  .month-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%}
+  .month-kpi{min-width:0}
+  .print-actions-row{flex-direction:column}
+  .seller-print-group{width:100%}
 }
 
 @media (max-width:640px){
@@ -229,11 +247,12 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
   .metric-icon{width:38px;height:38px;font-size:14px}
   .panel{padding:16px}
   .panel h2{font-size:14px}
-  .chart-shell{height:260px}
-  .chart-frame{padding:10px 10px 8px;border-radius:18px}
-  .chart-overlay-label{left:16px;top:14px;font-size:10px}
+  .chart-shell{height:280px}
+  .chart-frame{padding:12px;border-radius:16px}
+  .chart-overlay-label{left:16px;top:16px;font-size:10px}
   .modal-box{width:min(360px,calc(100vw - 32px));padding:24px}
   .chart-footer-note{flex-direction:column;align-items:flex-start}
+  .seller-voucher-row{grid-template-columns:24px 1fr auto;gap:8px}
   .filter-bar{flex-direction:column;align-items:stretch}
   .ff,.ff select{width:100%}
   .pagination{align-items:flex-start}
@@ -241,8 +260,10 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
   .table-wrap{max-height:none}
   th,td{padding:9px 10px;font-size:11px}
   .year-header{padding:12px 14px}
-  .month-trigger,.month-details{padding:14px}
-  .print-actions{flex-direction:column}
+  .month-trigger{padding:14px}
+  .month-details{padding:0 14px 14px}
+  .month-summary{grid-template-columns:1fr}
+  .month-toggle{display:none}
 }
 
 /* PRINT */
@@ -299,7 +320,7 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
 
 <div class="app">
   <header class="no-print">
-    <div class="logo">LINK.NET <span>PRO</span></div>
+    <div class="logo">LINK.NET <span>Server Wifi</span></div>
     <div class="nav">
       <button id="nav-dashboard" class="active" onclick="switchTab('dashboard')">📊 Dashboard</button>
       <button id="nav-rekap" onclick="switchTab('rekap')">💰 Rekap Detail</button>
@@ -326,7 +347,7 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
         <div class="hero-copy">
           <div class="eyebrow">Performance Console</div>
           <div class="hero-title">Dashboard Komisi <span>LINK.NET</span></div>
-          <div class="hero-sub">Pantau revenue, pembagian komisi, dan performa bulanan dalam tampilan yang lebih modern, fokus, dan enak dipakai sehari-hari.</div>
+          <div class="hero-sub">Pantau revenue, pembagian komisi, dan performa bulanan dalam ringkasan yang lebih rapi, fokus, dan nyaman dibaca setiap hari.</div>
           <div class="hero-actions">
             <button class="btn btn-refresh" onclick="syncFromGitHub()">Refresh Data</button>
             <button class="btn btn-outline" onclick="switchTab('rekap')">Lihat Rekap</button>
@@ -337,27 +358,17 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
             <div class="hero-chip"><span>Periode Aktif</span><strong id="hero-period">Belum ada data</strong></div>
           </div>
         </div>
-        <div class="hero-side">
-          <div class="spotlight-card">
-            <h3>Highlight</h3>
-            <div class="spotlight-main" id="spotlight-value">-</div>
-            <div class="spotlight-label" id="spotlight-label">Belum ada data transaksi.</div>
-            <div class="mini-trend" id="mini-trend">
-              <div class="mini-trend-row">
-                <span>Menunggu data</span>
-                <div class="mini-bar"><i style="width:0%"></i></div>
-                <strong>0%</strong>
-              </div>
-            </div>
+        <div class="hero-side" style="display:flex;align-items:center;justify-content:center;">
+          <div style="position:relative; display:flex; align-items:center; justify-content:center; width:100%; max-width:280px;">
+            <!-- Subtle glow behind the logo -->
+            <div style="position:absolute; width:100%; height:100%; background:radial-gradient(circle, rgba(236,72,153,0.1) 0%, transparent 70%); filter:blur(24px); border-radius:50%;"></div>
+            <!-- The Logo -->
+            <img src="./Gambar/LOGO_linknet.png" alt="LINK.NET Logo" style="position:relative; width:100%; height:auto; max-height:160px; object-fit:contain; filter:drop-shadow(0 20px 30px rgba(0,0,0,0.4)); transition:transform 0.3s ease;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
           </div>
         </div>
       </div>
     </div>
     <div class="dashboard-grid" style="margin-top:20px">
-      <div class="metric-card metric-revenue">
-        <div class="metric-top"><div><h3>Revenue (Total)</h3><div class="val" id="stat-rev">-</div></div><div class="metric-icon">RP</div></div>
-        <div class="metric-note">Total nilai transaksi dari seluruh laporan yang sudah berhasil dibaca.</div>
-      </div>
       <div class="metric-card metric-seller">
         <div class="metric-top"><div><h3>Penjual (Total)</h3><div class="val" id="stat-comm" style="color:var(--green)">-</div></div><div class="metric-icon">AG</div></div>
         <div class="metric-note">Akumulasi hasil yang dialokasikan untuk seluruh penjual.</div>
@@ -372,16 +383,28 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
       </div>
       <div id="chart-panel" class="panel chart-panel">
         <h2>Tren Performa Bulanan</h2>
-        <div class="panel-sub">Arah performa divisualkan sebagai gelombang tren agar lebih fokus ke ritme naik turunnya hasil.</div>
+        <div class="panel-sub">Ringkasan tren performa per periode untuk membaca arah pergerakan secara cepat.</div>
         <div class="chart-shell">
           <div class="chart-frame">
-            <div class="chart-overlay-label">Visual Trend</div>
+            <div class="chart-overlay-label">Trend Periode</div>
             <canvas id="chartRevenue"></canvas>
+            <div id="chart-privacy-block" style="position:absolute;inset:0;background:rgba(15, 17, 23, 0.95);backdrop-filter:blur(10px);border-radius:16px;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text3);">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px;opacity:0.6;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+              <div style="font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);">Tren Privasi</div>
+              <div style="font-size:11px;margin-top:6px;opacity:0.7;">Traffic disembunyikan untuk publik</div>
+            </div>
           </div>
         </div>
         <div class="chart-footer-note">
-          <div><span class="chart-legend-dot"></span>Kurva menunjukkan karakter performa tiap periode, tanpa menampilkan nominal.</div>
+          <div><span class="chart-legend-dot"></span>Kurva menampilkan pola naik-turun performa antar periode.</div>
           <div id="chart-mood">Belum ada data tren.</div>
+        </div>
+      </div>
+      <div class="panel seller-panel">
+        <h2>Total Pemasukan per Penjual</h2>
+        <div class="panel-sub">Total pemasukan untuk masing-masing penjual berdasarkan seluruh data transaksi.</div>
+        <div id="seller-voucher-list" class="seller-voucher-list">
+          <div class="seller-voucher-empty">Belum ada data pemasukan per penjual.</div>
         </div>
       </div>
       <div class="panel insight-panel">
@@ -548,8 +571,10 @@ async function loadConfig(){
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
 let isAdmin = false;
+const FORCE_ADMIN_PREVIEW = false;
+function hasAdminAccess(){ return false; /* Mode Admin dinonaktifkan sementara */ }
 
-function handleAuthClick() { if(!isAdmin) openModal(); }
+function handleAuthClick() { if(!hasAdminAccess()) openModal(); }
 
 function openModal() {
   document.getElementById('login-modal').classList.remove('hidden');
@@ -585,23 +610,27 @@ function doLogout() {
 }
 
 function refreshAll() {
+  const adminView = hasAdminAccess();
   // update badge
   const badge = document.getElementById('auth-badge');
   const label = document.getElementById('auth-label');
   const logoutBtn = document.getElementById('btn-logout');
-  badge.classList.toggle('is-admin', isAdmin);
-  label.textContent = isAdmin ? 'Admin' : 'Publik';
-  badge.style.cursor = isAdmin ? 'default' : 'pointer';
-  document.getElementById('public-notice').style.display = isAdmin ? 'none' : 'flex';
-  document.getElementById('chart-panel')?.classList.toggle('hidden', !isAdmin);
-  if(logoutBtn) logoutBtn.classList.toggle('hidden', !isAdmin);
+  badge.classList.toggle('is-admin', adminView);
+  label.textContent = adminView ? 'Admin' : 'Publik';
+  badge.style.cursor = adminView ? 'default' : 'pointer';
+  document.getElementById('public-notice').style.display = adminView ? 'none' : 'flex';
+  const chartCanvas = document.getElementById('chartRevenue');
+  const chartBlock = document.getElementById('chart-privacy-block');
+  if(chartCanvas) chartCanvas.style.opacity = adminView ? '1' : '0';
+  if(chartBlock) chartBlock.style.display = adminView ? 'none' : 'flex';
+  if(logoutBtn) logoutBtn.classList.toggle('hidden', !adminView);
 
   updateUI();
 }
 
 // ─── SENSOR ───────────────────────────────────────────────────────────────────
-function masked(val)     { if(isAdmin) return val; return '<span class="sensored"><span class="sensor-txt">••••••</span></span>'; }
-function maskedName(val) { if(isAdmin) return val; return '<span class="sensored">' + val.replace(/[\S]/g,'●') + '</span>'; }
+function masked(val)     { if(hasAdminAccess()) return val; const scrambled = String(val).replace(/\d/g, () => Math.floor(Math.random() * 10)); return '<span class="sensored" style="opacity:0.85;">' + scrambled + '</span>'; }
+function maskedName(val) { if(hasAdminAccess()) return val; const scrambled = String(val).replace(/[a-zA-Z]/g, 'x'); return '<span class="sensored" style="opacity:0.85;">' + scrambled + '</span>'; }
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 const state = { commissions:{}, reports:[], chart:null, isSyncing:false, currentTree:{} };
@@ -758,7 +787,8 @@ function updateUI(){
   });
   state.currentTree=tree;
 
-  document.getElementById('stat-rev').innerHTML   = masked('Rp '+fmt(tRev));
+  const revEl=document.getElementById('stat-rev');
+  if(revEl) revEl.innerHTML=masked('Rp '+fmt(tRev));
   document.getElementById('stat-comm').innerHTML  = masked('Rp '+fmt(Math.round(tS)));
   document.getElementById('stat-staff').innerHTML = masked('Rp '+fmt(Math.round(tSt)));
   document.getElementById('stat-net').innerHTML   = masked('Rp '+fmt(Math.round(tN)));
@@ -786,33 +816,39 @@ function updateDashboardHero(all, tRev, tS, tSt, tN){
   const accessEl = document.getElementById('hero-access');
   const countEl = document.getElementById('hero-report-count');
   const periodEl = document.getElementById('hero-period');
-  const spotVal = document.getElementById('spotlight-value');
-  const spotLabel = document.getElementById('spotlight-label');
-  const miniTrend = document.getElementById('mini-trend');
+  const sellerVoucherEl = document.getElementById('seller-voucher-list');
   const insightList = document.getElementById('insight-list');
+  const sellerFreq = Object.entries(all.reduce((acc, row) => {
+    if (row.sellerRaw) acc[row.sellerRaw] = (acc[row.sellerRaw] || 0) + 1;
+    return acc;
+  }, {})).sort((a,b) => b[1] - a[1]);
 
-  if (accessEl) accessEl.textContent = isAdmin ? 'Admin' : 'Publik';
+  const sellerIncome = Object.entries(all.reduce((acc, row) => {
+    if (row.sellerRaw) {
+      const { sComm } = calcComm(row);
+      acc[row.sellerRaw] = (acc[row.sellerRaw] || 0) + sComm;
+    }
+    return acc;
+  }, {})).sort((a,b) => b[1] - a[1]);
+
+  if (accessEl) accessEl.textContent = hasAdminAccess() ? 'Admin' : 'Publik';
   if (countEl) countEl.textContent = `${reportCount} File`;
   if (periodEl) periodEl.textContent = latestLabel;
-  if (spotVal) spotVal.innerHTML = reportCount ? masked('Rp ' + fmt(Math.round(tN))) : '-';
-  if (spotLabel) spotLabel.textContent = reportCount ? 'Akumulasi net owner dari semua file laporan saat ini.' : 'Belum ada data transaksi.';
-  if (miniTrend) {
-    miniTrend.innerHTML = monthTotals.slice(0,3).map(item => {
-      const pct = Math.max(8, Math.round((item.total / peak) * 100));
-      return `<div class="mini-trend-row"><span>${item.name}</span><div class="mini-bar"><i style="width:${pct}%"></i></div><strong>${isAdmin ? 'Rp ' + fmt(Math.round(item.total)) : '••••'}</strong></div>`;
-    }).join('') || `<div class="mini-trend-row"><span>Menunggu data</span><div class="mini-bar"><i style="width:0%"></i></div><strong>0%</strong></div>`;
+  if (sellerVoucherEl) {
+    sellerVoucherEl.innerHTML = sellerIncome.length
+      ? sellerIncome.map(([name,total],idx)=>{
+          const totalIncome = `Rp ${fmt(Math.round(total))}`;
+          return `<div class="seller-voucher-row"><span class="seller-rank">${idx+1}</span><span class="seller-name">${maskedName(name)}</span><strong class="seller-count" style="color:var(--green)">${masked(totalIncome)}</strong></div>`;
+        }).join('')
+      : `<div class="seller-voucher-empty">Belum ada data pemasukan per penjual.</div>`;
   }
   if (insightList) {
     const sellerCount = new Set(all.map(r => r.sellerRaw).filter(Boolean)).size;
     const packageCount = new Set(all.map(r => r.pkgRaw).filter(Boolean)).size;
-    const sellerFreq = Object.entries(all.reduce((acc, row) => {
-      if (row.sellerRaw) acc[row.sellerRaw] = (acc[row.sellerRaw] || 0) + 1;
-      return acc;
-    }, {})).sort((a,b) => b[1] - a[1]);
     const topSeller = sellerFreq[0]?.[0] || null;
     const topSellerText = !topSeller
       ? 'Belum ada nama penjual yang bisa dirangkum dari data saat ini.'
-      : isAdmin
+      : hasAdminAccess()
         ? `Aktivitas paling sering saat ini datang dari ${topSeller}, sehingga seller ini paling dominan muncul di riwayat transaksi.`
         : 'Salah satu seller tampil paling dominan di riwayat, tetapi identitasnya tetap disensor pada mode publik.';
 
@@ -866,53 +902,42 @@ function renderRekap(tree){
       <div class="year-header"><h4>Tahun ${y}</h4></div>
       <div class="monthly-list">${months.map(m=>{
         const d=tree[y][m], sn=Object.keys(d.sellers).sort();
-        const monthCards=sn
-          .map(n=>({name:n,sellerAmt:d.sellers[n].sComm||0,staffAmt:d.sellers[n].stComm||0}))
-          .map(item=>({...item,combined:item.sellerAmt+item.staffAmt}))
-          .sort((a,b)=>b.combined-a.combined)
-          .slice(0,3)
-          .map(item=>{
-            const sellerShare=item.combined?(item.sellerAmt/item.combined)*100:0;
-            const staffShare=item.combined?(item.staffAmt/item.combined)*100:0;
-            return `<div class="month-mini-card">
-              <strong>${maskedName(item.name)}</strong>
-              <div class="month-mini-bar">
-                <span class="seller" style="width:${sellerShare}%"></span>
-                <span class="staff" style="width:${staffShare}%"></span>
-              </div>
-              <div class="month-mini-meta">
-                <span class="seller-amt">P: <b>${masked('Rp '+fmt(Math.round(item.sellerAmt)))}</b></span>
-                <span class="staff-amt">S: <b>${masked('Rp '+fmt(Math.round(item.staffAmt)))}</b></span>
-              </div>
-            </div>`;
-          }).join('');
         return`<div class="month-row">
           <button class="month-trigger" onclick="this.parentElement.classList.toggle('active')">
             <div class="month-title">
               <span class="month-name">${MN[m]}</span>
               <div class="month-summary">
-                <span style="color:var(--accent2)">Owner: <b>${masked('Rp '+fmt(Math.round(d.net)))}</b></span>
-                <span style="color:var(--green)">Penjual: <b>${masked('Rp '+fmt(Math.round(d.sTotal)))}</b></span>
-                <span style="color:var(--purple)">Staff: <b>${masked('Rp '+fmt(Math.round(d.stTotal)))}</b></span>
+                <div class="month-kpi owner"><span>Owner</span><b>${masked('Rp '+fmt(Math.round(d.net)))}</b></div>
+                <div class="month-kpi seller"><span>Penjual</span><b>${masked('Rp '+fmt(Math.round(d.sTotal)))}</b></div>
+                <div class="month-kpi staff"><span>Staff</span><b>${masked('Rp '+fmt(Math.round(d.stTotal)))}</b></div>
               </div>
             </div>
-            <span style="font-size:10px;color:var(--text3)">DETAIL ▾</span>
+            <span class="month-toggle">Detail</span>
           </button>
-          ${monthCards ? `<div class="month-mini-strip">${monthCards}</div>` : ''}
           <div class="month-details">
             <div class="detail-grid">
-              <div><table class="detail-table">
-                <thead><tr><th style="text-align:left">Penjual</th><th style="text-align:right">Penjual</th></tr></thead>
-                <tbody>${sn.map(n=>`<tr><td>${maskedName(n)}</td><td style="text-align:right;color:var(--green)">${masked('Rp '+fmt(Math.round(d.sellers[n].sComm)))}</td></tr>`).join('')}</tbody>
-              </table></div>
-              <div><table class="detail-table">
-                <thead><tr><th style="text-align:left">Penjual</th><th style="text-align:right">Staff</th></tr></thead>
-                <tbody>${sn.map(n=>`<tr><td>${maskedName(n)}</td><td style="text-align:right;color:var(--purple)">${masked('Rp '+fmt(Math.round(d.sellers[n].stComm)))}</td></tr>`).join('')}</tbody>
-              </table></div>
+              <div class="detail-card">
+                <h5>Komisi Penjual</h5>
+                <div class="detail-card-scroll">
+                  <table class="detail-table">
+                    <thead><tr><th style="text-align:left">Penjual</th><th class="num">Penjual</th></tr></thead>
+                    <tbody>${sn.map(n=>`<tr><td>${maskedName(n)}</td><td class="num" style="color:var(--green)">${masked('Rp '+fmt(Math.round(d.sellers[n].sComm)))}</td></tr>`).join('')}</tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="detail-card">
+                <h5>Alokasi Staff</h5>
+                <div class="detail-card-scroll">
+                  <table class="detail-table">
+                    <thead><tr><th style="text-align:left">Penjual</th><th class="num">Staff</th></tr></thead>
+                    <tbody>${sn.map(n=>`<tr><td>${maskedName(n)}</td><td class="num" style="color:var(--purple)">${masked('Rp '+fmt(Math.round(d.sellers[n].stComm)))}</td></tr>`).join('')}</tbody>
+                  </table>
+                </div>
+              </div>
             </div>
-            ${isAdmin
-              ? `<div class="print-actions"><div class="seller-print-group"><p>CETAK LAPORAN PENJUAL:</p><div style="display:flex;flex-wrap:wrap;gap:8px">${sn.map(n=>`<button class="btn btn-outline btn-sm" onclick="printSeller('${y}','${m}','${n}')">👤 ${n}</button>`).join('')}</div></div><button class="btn btn-outline btn-sm" style="background:var(--bg3)" onclick="printStaff('${y}','${m}')">👔 Cetak Rekap Pegawai</button></div>`
-              : `<div style="margin-top:10px;font-size:12px;color:var(--text3);padding:8px 12px;background:var(--bg3);border-radius:var(--rs)">🔒 Login sebagai Admin untuk mencetak laporan</div>`
+            ${hasAdminAccess()
+              ? `<div class="print-actions"><div class="print-actions-head">Aksi Laporan</div><div class="print-actions-row"><div class="seller-print-group"><p>Cetak Laporan Penjual</p><div class="seller-print-list">${sn.map(n=>`<button class="btn btn-outline btn-sm" onclick="printSeller('${y}','${m}','${n}')">${n}</button>`).join('')}</div></div><button class="btn btn-outline btn-sm print-staff-btn" style="background:var(--bg3)" onclick="printStaff('${y}','${m}')">Cetak Rekap Staff</button></div></div>`
+              : `<div class="public-lock">Login sebagai Admin untuk mencetak laporan</div>`
             }
           </div>
         </div>`;
@@ -939,27 +964,34 @@ function renderChart(allRows){
           : 'Arah umum tren terlihat stabil antar periode.';
     }
   }
+  const maxVal=data.length ? Math.max(...data) : 0;
+  const minVal=data.length ? Math.min(...data) : 0;
+  const maxIdx=data.indexOf(maxVal);
+  const minIdx=data.indexOf(minVal);
+  const showMarkers=data.length>2;
   state.chart=new Chart(ctx,{
     type:'line',
     data:{
       labels:state.reports.map(r=>r.name.replace(/\.xlsx?$/i,'')),
       datasets:[{
-        label:'Trend',
+        label:'Total Owner',
         data,
-        borderColor:'#7dd3fc',
-        borderWidth:3,
-        tension:0.45,
-        pointRadius:0,
-        pointHoverRadius:0,
+        borderColor:'rgba(236, 72, 153, 1)',
+        borderWidth:4,
+        tension:0.4,
+        pointRadius:(ctx)=>showMarkers && (ctx.dataIndex===maxIdx || ctx.dataIndex===minIdx) ? 4 : 0,
+        pointHoverRadius:6,
+        pointBackgroundColor:'#1e293b',
+        pointBorderColor:'rgba(236, 72, 153, 1)',
+        pointBorderWidth:2,
         fill:true,
         backgroundColor:(context)=>{
           const chart=context.chart;
           const {ctx,chartArea}=chart;
-          if(!chartArea) return 'rgba(59,130,246,0.18)';
+          if(!chartArea) return 'rgba(236, 72, 153, 0.1)';
           const g=ctx.createLinearGradient(0,chartArea.top,0,chartArea.bottom);
-          g.addColorStop(0,'rgba(34,211,238,0.30)');
-          g.addColorStop(0.45,'rgba(59,130,246,0.16)');
-          g.addColorStop(1,'rgba(15,23,42,0.02)');
+          g.addColorStop(0,'rgba(236, 72, 153, 0.25)');
+          g.addColorStop(1,'rgba(236, 72, 153, 0.0)');
           return g;
         }
       }]
@@ -971,13 +1003,13 @@ function renderChart(allRows){
         y:{
           beginAtZero:true,
           border:{display:false},
-          grid:{color:'rgba(255,255,255,0.04)',drawTicks:false},
+          grid:{color:'rgba(255,255,255,0.03)',drawTicks:false},
           ticks:{display:false}
         },
         x:{
           border:{display:false},
           grid:{display:false,drawTicks:false},
-          ticks:{color:'rgba(232,236,244,0.52)',font:{size:11}}
+          ticks:{color:'rgba(255,255,255,0.5)',font:{family:'Inter',size:12,weight:'500'},padding:10}
         }
       },
       plugins:{
@@ -985,21 +1017,29 @@ function renderChart(allRows){
         tooltip:{
           enabled:true,
           displayColors:false,
-          backgroundColor:'rgba(15,23,42,0.92)',
-          borderColor:'rgba(125,211,252,0.25)',
+          backgroundColor:'rgba(15, 23, 42, 0.95)',
+          borderColor:'rgba(236, 72, 153, 0.3)',
           borderWidth:1,
-          titleColor:'#e8ecf4',
-          bodyColor:'#b8c2d9',
+          titleColor:'#94a3b8',
+          titleFont:{family:'Inter',size:11,weight:'600'},
+          bodyColor:'#f8fafc',
+          bodyFont:{family:'Inter',size:14,weight:'700'},
+          padding:12,
+          cornerRadius:8,
           callbacks:{
             title:(items)=>items[0]?.label || '',
             label:(ctx)=>{
-              if(data.length < 2) return 'Awal pembacaan tren';
-              if(ctx.dataIndex===0) return 'Titik pembuka tren';
-              if(ctx.dataIndex===data.length-1) return 'Titik terbaru tren';
+              const val = hasAdminAccess() ? `Rp ${fmt(Math.round(ctx.raw))}` : '••••••';
+              return `Owner: ${val}`;
+            },
+            afterLabel:(ctx)=>{
+              if(data.length < 2) return '';
+              if(ctx.dataIndex===0) return 'Titik awal tren';
               const prev=data[ctx.dataIndex-1];
-              if(ctx.raw > prev) return 'Menguat dari periode sebelumnya';
-              if(ctx.raw < prev) return 'Melemah dari periode sebelumnya';
-              return 'Stabil dari periode sebelumnya';
+              const diff = ctx.raw - prev;
+              const pct = prev > 0 ? ((diff / prev) * 100).toFixed(1) : 0;
+              const sign = diff > 0 ? '+' : '';
+              return `${diff >= 0 ? '↗' : '↘'} ${sign}${pct}% dari periode sblmnya`;
             }
           }
         }
@@ -1117,7 +1157,7 @@ function runPrint(html){
 
 // ─── PRINT ────────────────────────────────────────────────────────────────────
 function printSeller(year,mi,sellerName){
-  if(!isAdmin)return;
+  if(!hasAdminAccess())return;
   const data=state.currentTree[year][mi];
   if(!data?.sellers[sellerName])return;
   const sd=data.sellers[sellerName], mn=MN[mi];
@@ -1137,7 +1177,7 @@ function printSeller(year,mi,sellerName){
 }
 
 function printStaff(year,mi){
-  if(!isAdmin)return;
+  if(!hasAdminAccess())return;
   const data=state.currentTree[year][mi];
   if(!data)return;
   const mn=MN[mi], sels=Object.keys(data.sellers).sort();
