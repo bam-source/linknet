@@ -144,13 +144,16 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
 .detail-table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.05);color:#d3dbea}
 .detail-table tbody tr:nth-child(even){background:rgba(255,255,255,0.015)}
 .detail-table th.num,.detail-table td.num{text-align:right}
-.print-actions{margin-top:14px;padding:12px;border:1px solid rgba(255,255,255,0.07);border-radius:12px;background:rgba(7,12,22,0.52);display:flex;flex-direction:column;gap:10px}
-.print-actions-head{font-size:10px;color:#c4cfdf;text-transform:uppercase;letter-spacing:.08em}
-.print-actions-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}
-.seller-print-group{background:rgba(255,255,255,0.03);padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);flex:1 1 320px}
-.seller-print-group p{margin-bottom:10px;font-weight:600;color:#d6ddec;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+.print-actions{margin-top:20px;padding:20px 24px;border:1px solid rgba(255,255,255,0.05);border-radius:16px;background:linear-gradient(145deg, rgba(30,37,53,0.4), rgba(15,23,42,0.6));display:flex;flex-direction:column;gap:16px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.05)}
+.print-actions-head{font-size:12px;color:var(--text);font-weight:700;text-transform:uppercase;letter-spacing:.1em;display:flex;align-items:center;gap:8px}
+.print-actions-head::before{content:'';display:block;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.print-actions-row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.seller-print-group{background:rgba(15,23,42,0.5);padding:16px;border-radius:12px;border:1px solid rgba(255,255,255,0.04);flex:1 1 300px;border-top:3px solid var(--accent2);transition:transform 0.2s, box-shadow 0.2s}
+.seller-print-group:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.2);border-color:rgba(255,255,255,0.1)}
+.seller-print-group p{margin-bottom:14px;font-weight:700;color:var(--text);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
 .seller-print-list{display:flex;flex-wrap:wrap;gap:8px}
-.print-staff-btn{min-height:34px}
+.print-staff-btn{min-height:44px;padding:0 24px;border-radius:12px;font-weight:600;letter-spacing:.05em;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.3);color:var(--text);cursor:pointer;transition:all 0.2s}
+.print-staff-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent);transform:translateY(-2px);box-shadow:0 8px 24px rgba(168,85,247,0.3)}
 .public-lock{margin-top:12px;font-size:12px;color:var(--text3);padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px}
 
 /* SENSOR */
@@ -936,7 +939,7 @@ function renderRekap(tree){
               </div>
             </div>
             ${hasAdminAccess()
-              ? `<div class="print-actions"><div class="print-actions-head">Aksi Laporan</div><div class="print-actions-row"><div class="seller-print-group"><p>Cetak Laporan Penjual</p><div class="seller-print-list">${sn.map(n=>`<button class="btn btn-outline btn-sm" onclick="printSeller('${y}','${m}','${n}')">${n}</button>`).join('')}</div></div><button class="btn btn-outline btn-sm print-staff-btn" style="background:var(--bg3)" onclick="printStaff('${y}','${m}')">Cetak Rekap Staff</button></div></div>`
+              ? `<div class="print-actions"><div class="print-actions-head">Aksi Laporan</div><div class="print-actions-row"><div class="seller-print-group"><p>Cetak Laporan Penjual</p><div class="seller-print-list">${sn.map(n=>`<button class="btn btn-outline btn-sm" onclick="printSeller('${y}','${m}','${n}')">${n}</button>`).join('')}</div></div><button class="print-staff-btn" onclick="printStaff('${y}','${m}')">Cetak Rekap Staff</button></div></div>`
               : `<div class="public-lock">Login sebagai Admin untuk mencetak laporan</div>`
             }
           </div>
