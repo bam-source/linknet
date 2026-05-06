@@ -117,12 +117,12 @@
     "seller": "RT01",
     "package": "2RB/4JAM",
     "sellerComm": 500.0,
-    "staffComm": 0.0
+    "staffComm": 500.0
   },
   {
     "seller": "RT01",
     "package": "5RB/12JAM",
     "sellerComm": 500.0,
-    "staffComm": 0.0
+    "staffComm": 500.0
   }
 ]
