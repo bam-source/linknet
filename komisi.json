@@ -88,7 +88,8 @@
     "package": "5RB/12JAM",
     "sellerComm": 2000.0,
     "staffComm": 0.0
-  },{
+  },
+  {
     "seller": "ASEP",
     "package": "1RB/2JAM",
     "sellerComm": 500.0,
@@ -104,6 +105,24 @@
     "seller": "ASEP",
     "package": "5RB/12JAM",
     "sellerComm": 2000.0,
+    "staffComm": 0.0
+  },
+  {
+    "seller": "RT01",
+    "package": "1RB/2JAM",
+    "sellerComm": 500.0,
+    "staffComm": 0.0
+  },
+  {
+    "seller": "RT01",
+    "package": "2RB/4JAM",
+    "sellerComm": 500.0,
+    "staffComm": 0.0
+  },
+  {
+    "seller": "RT01",
+    "package": "5RB/12JAM",
+    "sellerComm": 500.0,
     "staffComm": 0.0
   },
 ]
