@@ -114,9 +114,34 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
 
 /* REKAP */
 .yearly-stack{display:flex;flex-direction:column;gap:20px;margin-top:10px}
-.year-block{background:linear-gradient(180deg, rgba(30,37,53,0.94), rgba(22,27,39,0.88));border:1px solid var(--border);border-radius:16px;padding:0 16px 16px;box-shadow:0 18px 42px rgba(0,0,0,0.16)}
-.year-header{padding:16px 4px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
-.year-header h4{font-size:17px;color:#dbeafe;font-weight:800;letter-spacing:.02em}
+.year-block{background:linear-gradient(180deg, rgba(30,37,53,0.94), rgba(22,27,39,0.88));border:1px solid var(--border);border-radius:16px;padding:0 16px;box-shadow:0 18px 42px rgba(0,0,0,0.16);overflow:hidden;transition:border-color .2s}
+.year-block.year-open{padding-bottom:16px;border-color:rgba(147,51,234,0.3)}
+.year-header{padding:16px 4px 14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;border-bottom:1px solid transparent;transition:border-color .2s}
+.year-open .year-header{border-bottom-color:var(--border)}
+.year-header h4{font-size:17px;color:#dbeafe;font-weight:800;letter-spacing:.02em;display:flex;align-items:center;gap:10px}
+.year-header-meta{display:flex;align-items:center;gap:12px}
+.year-badge{font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(147,51,234,0.15);border:1px solid rgba(147,51,234,0.25);color:var(--accent);font-weight:600}
+.year-chevron{font-size:13px;color:var(--text3);transition:transform .3s;display:inline-block}
+.year-open .year-chevron{transform:rotate(180deg)}
+.year-body{display:none}
+.year-open .year-body{display:block}
+
+/* SELLER INCOME SUMMARY (Dashboard) */
+.seller-income-panel{grid-column:span 12;border-radius:24px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);backdrop-filter:blur(16px);padding:24px;margin-bottom:0}
+.seller-income-panel h2{font-size:18px;font-weight:700;margin-bottom:6px}
+.seller-income-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:16px}
+.seller-income-card{padding:16px 18px;border-radius:16px;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:14px;transition:all .2s}
+.seller-income-card:hover{background:rgba(255,255,255,0.04);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.3)}
+.seller-income-rank{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-size:13px;font-weight:800;flex-shrink:0}
+.rank-1{background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3)}
+.rank-2{background:rgba(156,163,175,0.15);color:#9ca3af;border:1px solid rgba(156,163,175,0.3)}
+.rank-3{background:rgba(180,83,9,0.15);color:#b45309;border:1px solid rgba(180,83,9,0.3)}
+.rank-other{background:rgba(255,255,255,0.05);color:var(--text3);border:1px solid rgba(255,255,255,0.08)}
+.seller-income-info{flex:1;min-width:0}
+.seller-income-name{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seller-income-amount{font-size:15px;font-weight:800;color:var(--green);margin-top:2px}
+.seller-income-bar-wrap{width:100%;height:4px;background:rgba(255,255,255,0.06);border-radius:999px;margin-top:6px;overflow:hidden}
+.seller-income-bar{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--green),var(--cyan));transition:width .6s ease}
 .monthly-list{display:flex;flex-direction:column;gap:12px;padding-top:14px}
 .month-row{background:rgba(15,23,42,0.58);border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;transition:border-color .2s ease, box-shadow .2s ease}
 .month-row:hover{border-color:rgba(168,85,247,0.34)}
@@ -214,6 +239,7 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
   .chart-panel{grid-column:span 12}
   .seller-panel{grid-column:span 12}
   .insight-panel{grid-column:span 12}
+  .seller-income-panel{grid-column:span 12}
   .detail-grid{grid-template-columns:1fr}
   .month-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%}
   .month-kpi{min-width:0}
@@ -410,6 +436,14 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
           <div class="seller-voucher-empty">Belum ada data pemasukan per penjual.</div>
         </div>
       </div>
+      <div id="seller-income-panel" class="seller-income-panel">
+        <h2>📊 Rekap Penghasilan Penjual</h2>
+        <div class="panel-sub">Total akumulasi penghasilan masing-masing penjual dari seluruh periode data.</div>
+        <div id="seller-income-grid" class="seller-income-grid">
+          <div style="font-size:12px;color:var(--text3);padding:12px">Belum ada data. Klik 🔄 Update Data.</div>
+        </div>
+      </div>
+
       <div id="gallery-panel" class="panel gallery-panel" style="grid-column:span 12;margin-bottom:0;border-radius:24px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);backdrop-filter:blur(16px);padding:24px;">
         <h2>Dokumentasi Tim</h2>
         <div class="panel-sub">Galeri aktivitas dan dokumentasi lapangan.</div>
@@ -908,17 +942,54 @@ function updateDashboardHero(all, tRev, tS, tSt, tN){
         }).join('')
       : `<div class="seller-voucher-empty">Belum ada data pemasukan per penjual.</div>`;
   }
+
+  renderSellerIncomePanel(sellerIncome);
+}
+
+function renderSellerIncomePanel(sellerIncome){
+  const el=document.getElementById('seller-income-grid');
+  if(!el) return;
+  if(!sellerIncome||!sellerIncome.length){
+    el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:12px">Belum ada data pemasukan.</div>';
+    return;
+  }
+  const maxVal=sellerIncome[0][1]||1;
+  el.innerHTML=sellerIncome.map(([name,total],idx)=>{
+    const rankClass=idx===0?'rank-1':idx===1?'rank-2':idx===2?'rank-3':'rank-other';
+    const pct=Math.round((total/maxVal)*100);
+    return`<div class="seller-income-card">
+      <div class="seller-income-rank ${rankClass}">${idx+1}</div>
+      <div class="seller-income-info">
+        <div class="seller-income-name">${maskedName(name)}</div>
+        <div class="seller-income-amount">${masked('Rp '+fmt(Math.round(total)))}</div>
+        <div class="seller-income-bar-wrap"><div class="seller-income-bar" style="width:${pct}%"></div></div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ─── REKAP ────────────────────────────────────────────────────────────────────
+function toggleYearBlock(el){
+  const block=el.closest('.year-block');
+  block.classList.toggle('year-open');
+}
 function renderRekap(tree){
   const root=document.getElementById('rekap-root');
   const years=Object.keys(tree).sort((a,b)=>a-b);
   if(!years.length){root.innerHTML='<p style="font-size:12px;color:var(--text3);padding:20px">Belum ada data. Klik 🔄 Update Data.</p>';return;}
-  root.innerHTML=years.map(y=>{
+  root.innerHTML=years.map((y,yi)=>{
     const months=Object.keys(tree[y]).sort((a,b)=>a-b);
-    return`<div class="year-block">
-      <div class="year-header"><h4>Tahun ${y}</h4></div>
+    const isLatest=(yi===years.length-1);
+    const totalYear=months.reduce((s,m)=>s+tree[y][m].net,0);
+    return`<div class="year-block${isLatest?' year-open':''}">
+      <div class="year-header" onclick="toggleYearBlock(this)">
+        <h4>📅 Tahun ${y} <span class="year-chevron">▼</span></h4>
+        <div class="year-header-meta">
+          <span class="year-badge">${months.length} Bulan</span>
+          <span class="year-badge" style="background:rgba(236,72,153,0.1);border-color:rgba(236,72,153,0.25);color:var(--accent2)">${masked('Rp '+fmt(Math.round(totalYear)))}</span>
+        </div>
+      </div>
+      <div class="year-body">
       <div class="monthly-list">${months.map(m=>{
         const d=tree[y][m], sn=Object.keys(d.sellers).sort();
         return`<div class="month-row">
@@ -961,6 +1032,7 @@ function renderRekap(tree){
           </div>
         </div>`;
       }).join('')}</div>
+      </div>
     </div>`;
   }).join('');
 }
