@@ -430,15 +430,15 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
         </div>
       </div>
       <div class="panel seller-panel">
-        <h2>Total Pemasukan per Penjual</h2>
-        <div class="panel-sub">Total pemasukan untuk masing-masing penjual berdasarkan seluruh data transaksi.</div>
+        <h2>Total Penjualan per Penjual</h2>
+        <div class="panel-sub">Total keuntungan owner yang dihasilkan oleh masing-masing penjual.</div>
         <div id="seller-voucher-list" class="seller-voucher-list">
           <div class="seller-voucher-empty">Belum ada data pemasukan per penjual.</div>
         </div>
       </div>
       <div id="seller-income-panel" class="seller-income-panel">
-        <h2>📊 Rekap Penghasilan Penjual</h2>
-        <div class="panel-sub">Total akumulasi penghasilan masing-masing penjual dari seluruh periode data.</div>
+        <h2>💰 Hasil Penjual</h2>
+        <div class="panel-sub">Total komisi / keuntungan yang diterima masing-masing penjual dari seluruh periode data.</div>
         <div id="seller-income-grid" class="seller-income-grid">
           <div style="font-size:12px;color:var(--text3);padding:12px">Belum ada data. Klik 🔄 Update Data.</div>
         </div>
@@ -918,12 +918,18 @@ function updateDashboardHero(all, tRev, tS, tSt, tN){
   const countEl = document.getElementById('hero-report-count');
   const periodEl = document.getElementById('hero-period');
   const sellerVoucherEl = document.getElementById('seller-voucher-list');
-  const sellerFreq = Object.entries(all.reduce((acc, row) => {
-    if (row.sellerRaw) acc[row.sellerRaw] = (acc[row.sellerRaw] || 0) + 1;
+
+  // Panel tengah: Total Penjualan per penjual = fNet (kontribusi ke owner)
+  const sellerNet = Object.entries(all.reduce((acc, row) => {
+    if (row.sellerRaw) {
+      const { fNet } = calcComm(row);
+      acc[row.sellerRaw] = (acc[row.sellerRaw] || 0) + fNet;
+    }
     return acc;
   }, {})).sort((a,b) => b[1] - a[1]);
 
-  const sellerIncome = Object.entries(all.reduce((acc, row) => {
+  // Panel bawah: Hasil Penjual = sComm (komisi untuk penjual itu sendiri)
+  const sellerComm = Object.entries(all.reduce((acc, row) => {
     if (row.sellerRaw) {
       const { sComm } = calcComm(row);
       acc[row.sellerRaw] = (acc[row.sellerRaw] || 0) + sComm;
@@ -934,27 +940,29 @@ function updateDashboardHero(all, tRev, tS, tSt, tN){
   if (accessEl) accessEl.textContent = hasAdminAccess() ? 'Admin' : 'Publik';
   if (countEl) countEl.textContent = `${reportCount} File`;
   if (periodEl) periodEl.textContent = latestLabel;
+
+  // Panel tengah: Total Penjualan (fNet = keuntungan owner yg dihasilkan penjual)
   if (sellerVoucherEl) {
-    sellerVoucherEl.innerHTML = sellerIncome.length
-      ? sellerIncome.map(([name,total],idx)=>{
-          const totalIncome = `Rp ${fmt(Math.round(total))}`;
-          return `<div class="seller-voucher-row"><span class="seller-rank">${idx+1}</span><span class="seller-name">${maskedName(name)}</span><strong class="seller-count" style="color:var(--green)">${masked(totalIncome)}</strong></div>`;
+    sellerVoucherEl.innerHTML = sellerNet.length
+      ? sellerNet.map(([name,total],idx)=>{
+          return `<div class="seller-voucher-row"><span class="seller-rank">${idx+1}</span><span class="seller-name">${maskedName(name)}</span><strong class="seller-count" style="color:var(--accent2)">${masked('Rp '+fmt(Math.round(total)))}</strong></div>`;
         }).join('')
-      : `<div class="seller-voucher-empty">Belum ada data pemasukan per penjual.</div>`;
+      : `<div class="seller-voucher-empty">Belum ada data penjualan per penjual.</div>`;
   }
 
-  renderSellerIncomePanel(sellerIncome);
+  // Panel bawah di atas foto: Hasil Penjual (sComm = komisi penjual)
+  renderSellerIncomePanel(sellerComm);
 }
 
-function renderSellerIncomePanel(sellerIncome){
+function renderSellerIncomePanel(sellerComm){
   const el=document.getElementById('seller-income-grid');
   if(!el) return;
-  if(!sellerIncome||!sellerIncome.length){
-    el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:12px">Belum ada data pemasukan.</div>';
+  if(!sellerComm||!sellerComm.length){
+    el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:12px">Belum ada data hasil penjual.</div>';
     return;
   }
-  const maxVal=sellerIncome[0][1]||1;
-  el.innerHTML=sellerIncome.map(([name,total],idx)=>{
+  const maxVal=sellerComm[0][1]||1;
+  el.innerHTML=sellerComm.map(([name,total],idx)=>{
     const rankClass=idx===0?'rank-1':idx===1?'rank-2':idx===2?'rank-3':'rank-other';
     const pct=Math.round((total/maxVal)*100);
     return`<div class="seller-income-card">
@@ -1309,9 +1317,3 @@ document.getElementById('login-modal').addEventListener('click',function(e){if(e
 </script>
 </body>
 </html>
-
-
-
-
-
-
